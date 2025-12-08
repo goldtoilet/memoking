@@ -108,10 +108,10 @@ st.markdown(
 
 /* 세로 블럭 간격 전체적으로 줄이기 (v-spacing) */
 .stVerticalBlock {
-    gap: 0.45rem !important;
+    gap: 0.25rem !important;
 }
 
-/* 라벨 숨기기 – 위에 쓸모없는 빈 공간 제거 */
+/* 라벨 숨기기 – 위쪽 쓸모없는 빈 공간 제거 */
 .stTextInput label, .stTextArea label {
     display: none !important;
 }
@@ -135,41 +135,17 @@ st.markdown(
     font-size: 0.95rem !important;
 }
 
-/* 기본 버튼 조금 작게 */
+/* 기본 버튼 – 작게, 컴팩트하게 */
 .stButton button {
-    padding: 0.32rem 0.75rem;
-    font-size: 0.85rem;
+    padding: 0.16rem 0.55rem !important;
+    font-size: 0.80rem !important;
+    border-radius: 8px !important;
 }
 
-/* ▼ 버튼 row: Streamlit이 모바일에서 column으로 바꾸는 걸 덮어씌우기 */
-
-/* 이 wrapper 안에 있는 stHorizontalBlock 은 항상 가로 flex */
-.btn-row-wrapper .stHorizontalBlock {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: center !important;
-    gap: 0.3rem !important;
-}
-
-/* 각 column 은 auto-width, 여백 최소화 */
-.btn-row-wrapper .stHorizontalBlock > div {
-    flex: 0 0 auto !important;
-    width: auto !important;
-    padding: 0 !important;
-    margin: 0 !important;
-}
-
-/* 버튼 자체는 왼쪽 정렬 */
-.btn-row-wrapper .stButton {
-    display: flex !important;
-    justify-content: flex-start !important;
-}
-
-/* 카드와 카드 사이 구분선도 간격 줄이기 */
+/* 카드 안/밖 구분선 간격도 줄이기 */
 hr {
-    margin-top: 0.6rem !important;
-    margin-bottom: 0.6rem !important;
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
 }
 </style>
 """,
@@ -234,16 +210,10 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # ▼ 사이드바 하단 버튼 3개: wrapper + columns
-    st.markdown('<div class="btn-row-wrapper">', unsafe_allow_html=True)
-    colA, colB, colC = st.columns(3)
-    with colA:
-        add_page_clicked = st.button("➕", help="페이지 추가", key="btn_add_page")
-    with colB:
-        delete_page_clicked = st.button("🗑", help="페이지 삭제", key="btn_del_page")
-    with colC:
-        rename_page_clicked = st.button("✏️", help="페이지 이름 변경", key="btn_rename_page")
-    st.markdown("</div>", unsafe_allow_html=True)
+    # 사이드바 하단 버튼 3개 (세로형이지만 작게)
+    add_page_clicked = st.button("➕ 페이지", key="btn_add_page")
+    delete_page_clicked = st.button("🗑 페이지 삭제", key="btn_del_page")
+    rename_page_clicked = st.button("✏️ 이름 변경", key="btn_rename_page")
 
     if add_page_clicked:
         add_page("새 페이지")
@@ -313,16 +283,10 @@ for idx, card in enumerate(cards):
         placeholder="내용을 입력하세요",
     )
 
-    # ▼ 카드 아래 버튼 row
-    st.markdown('<div class="btn-row-wrapper">', unsafe_allow_html=True)
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        save_clicked = st.button("💾 저장", key=f"save_{card_id}")
-    with col2:
-        add_clicked = st.button("＋ 추가", key=f"add_{card_id}")
-    with col3:
-        delete_clicked = st.button("🗑 삭제", key=f"delete_{card_id}")
-    st.markdown("</div>", unsafe_allow_html=True)
+    # 카드 아래 버튼 3개 (세로형, 작게)
+    save_clicked = st.button("💾 저장", key=f"save_{card_id}")
+    add_clicked = st.button("＋ 카드 추가", key=f"add_{card_id}")
+    delete_clicked = st.button("🗑 카드 삭제", key=f"delete_{card_id}")
 
     st.markdown("---")
 
