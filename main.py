@@ -89,7 +89,7 @@ def delete_card(card_id):
 
 
 # ---------------------------
-# 공통 스타일
+# 공통 스타일 (배경/입력필드/버튼)
 # ---------------------------
 st.markdown(
     """
@@ -99,43 +99,34 @@ st.markdown(
     background-color: #f4f5f7;
 }
 
-/* 카드 스타일 */
-.card-box {
-    background-color: #f0f2f6;
-    border-radius: 16px;
-    padding: 10px 12px;
-    border: 1px solid #e0e3ea;
-}
-
-/* 카드 안의 버튼 줄: 왼쪽 정렬 */
-.card-actions {
-    display: flex;
-    gap: 0.4rem;
-    justify-content: flex-start;
-    align-items: center;
-    margin-top: 0.4rem;
-}
-
-.card-actions .stButton {
-    margin: 0;
-}
-
-/* 버튼 조금 작게 */
-.card-actions .stButton button {
-    padding: 0.3rem 0.7rem;
-    font-size: 0.85rem;
-}
-
-/* 입력 필드 라벨 숨기기 (위쪽 빈 라벨 영역 제거) */
+/* 라벨 영역 숨기기 - 위에 쓸모없는 공간 제거 */
 .stTextInput label, .stTextArea label {
     display: none !important;
 }
 
-/* 입력/에디터 배경 흰색 */
+/* 입력/에디터 배경을 전체 배경과 같게 */
 .stTextInput input, .stTextArea textarea {
-    background-color: #ffffff !important;
+    background-color: #f4f5f7 !important;
     border-radius: 10px !important;
     border: 1px solid #cfd3de !important;
+    color: #222 !important;
+}
+
+/* 카드 제목은 볼드체 */
+.stTextInput input {
+    font-weight: 700 !important;
+}
+
+/* textarea 높이 조금 줄이기 */
+.stTextArea textarea {
+    min-height: 110px !important;
+    font-size: 0.95rem !important;
+}
+
+/* 버튼 살짝 작게 */
+.stButton button {
+    padding: 0.35rem 0.8rem;
+    font-size: 0.85rem;
 }
 </style>
 """,
@@ -253,9 +244,7 @@ if not cards:
 for idx, card in enumerate(cards):
     card_id, title, content = card
 
-    # 카드 박스
-    st.markdown("<div class='card-box'>", unsafe_allow_html=True)
-
+    # 카드 제목 입력 (라벨 숨김 + bold + 배경 동일)
     new_title = st.text_input(
         "",
         value=title,
@@ -264,25 +253,26 @@ for idx, card in enumerate(cards):
         placeholder="제목 입력",
     )
 
+    # 카드 내용 입력
     new_content = st.text_area(
         "",
         value=content,
-        height=120,
+        height=110,
         key=f"content_{card_id}",
         label_visibility="collapsed",
         placeholder="내용을 입력하세요",
     )
 
-    # 버튼 한 줄, 왼쪽 정렬
-    st.markdown("<div class='card-actions'>", unsafe_allow_html=True)
-    save_clicked = st.button("💾 저장", key=f"save_{card_id}")
-    add_clicked = st.button("＋ 추가", key=f"add_{card_id}")
-    delete_clicked = st.button("🗑 삭제", key=f"delete_{card_id}")
-    st.markdown("</div>", unsafe_allow_html=True)
+    # 버튼 3개를 가로 한 줄에 (컬럼 3개)
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        save_clicked = st.button("💾 저장", key=f"save_{card_id}")
+    with col2:
+        add_clicked = st.button("＋ 추가", key=f"add_{card_id}")
+    with col3:
+        delete_clicked = st.button("🗑 삭제", key=f"delete_{card_id}")
 
-    st.markdown("</div>", unsafe_allow_html=True)  # card-box 끝
-
-    # 카드와 다음 컴포넌트 사이 separator
+    # 카드와 다음 카드 사이 구분선
     st.markdown("---")
 
     # 버튼 동작
