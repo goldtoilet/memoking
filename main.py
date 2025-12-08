@@ -70,15 +70,16 @@ def get_cards(page_id):
 
 def add_card(page_id):
     cur = db.cursor()
-    cur.execute("INSERT INTO cards(page_id, title, content) VALUES (?, ?, ?)",
-                (page_id, "제목 없음", ""))
+    cur.execute(
+        "INSERT INTO cards(page_id, title, content) VALUES (?, ?, ?)",
+        (page_id, "제목 없음", ""),
+    )
     db.commit()
 
 
 def update_card(card_id, title, content):
     cur = db.cursor()
-    cur.execute("UPDATE cards SET title=?, content=? WHERE id=?",
-                (title, content, card_id))
+    cur.execute("UPDATE cards SET title=?, content=? WHERE id=?", (title, content, card_id))
     db.commit()
 
 
@@ -99,7 +100,7 @@ st.markdown(
     background-color: #f4f5f7;
 }
 
-/* 라벨 영역 숨기기 - 위에 쓸모없는 공간 제거 */
+/* 라벨 영역 숨기기 - 위쪽 쓸모없는 공간 제거 */
 .stTextInput label, .stTextArea label {
     display: none !important;
 }
@@ -123,10 +124,22 @@ st.markdown(
     font-size: 0.95rem !important;
 }
 
-/* 버튼 살짝 작게 */
+/* 기본 버튼 조금 작게 */
 .stButton button {
     padding: 0.35rem 0.8rem;
     font-size: 0.85rem;
+}
+
+/* 버튼들을 항상 가로 한 줄에 배치하기 위한 공통 클래스 */
+.btn-row {
+    display: block;
+    margin-top: 0.4rem;
+}
+
+/* btn-row 안에 있는 모든 st.button 컨테이너를 inline-block 으로 */
+.btn-row [data-testid="stButton"] {
+    display: inline-block !important;
+    margin-right: 0.4rem;
 }
 </style>
 """,
@@ -190,19 +203,26 @@ with st.sidebar:
 
     st.markdown("---")
 
-    colA, colB, colC = st.columns(3)
-    with colA:
-        if st.button("➕", help="페이지 추가"):
-            add_page("새 페이지")
-            st.rerun()
-    with colB:
-        if st.button("🗑", help="페이지 삭제"):
-            delete_page(current_page_id)
-            st.rerun()
-    with colC:
-        if st.button("✏️", help="페이지 이름 변경"):
-            st.session_state["renaming_page"] = True
-            st.session_state["rename_temp"] = choice
+    # 사이드바 하단 버튼 3개 (CSS로 가로 배치)
+    btn_sidebar = st.container()
+    with btn_sidebar:
+        st.markdown('<div class="btn-row">', unsafe_allow_html=True)
+        add_page_clicked = st.button("➕", help="페이지 추가", key="btn_add_page")
+        delete_page_clicked = st.button("🗑", help="페이지 삭제", key="btn_del_page")
+        rename_page_clicked = st.button("✏️", help="페이지 이름 변경", key="btn_rename_page")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    if add_page_clicked:
+        add_page("새 페이지")
+        st.rerun()
+
+    if delete_page_clicked:
+        delete_page(current_page_id)
+        st.rerun()
+
+    if rename_page_clicked:
+        st.session_state["renaming_page"] = True
+        st.session_state["rename_temp"] = choice
 
     # 페이지 이름 수정 UI
     if st.session_state["renaming_page"]:
@@ -244,7 +264,7 @@ if not cards:
 for idx, card in enumerate(cards):
     card_id, title, content = card
 
-    # 카드 제목 입력 (라벨 숨김 + bold + 배경 동일)
+    # 카드 제목
     new_title = st.text_input(
         "",
         value=title,
@@ -253,7 +273,7 @@ for idx, card in enumerate(cards):
         placeholder="제목 입력",
     )
 
-    # 카드 내용 입력
+    # 카드 내용
     new_content = st.text_area(
         "",
         value=content,
@@ -263,14 +283,14 @@ for idx, card in enumerate(cards):
         placeholder="내용을 입력하세요",
     )
 
-    # 버튼 3개를 가로 한 줄에 (컬럼 3개)
-    col1, col2, col3 = st.columns(3)
-    with col1:
+    # 카드 아래 버튼 3개를 CSS로 가로 한 줄에 배치
+    btn_row = st.container()
+    with btn_row:
+        st.markdown('<div class="btn-row">', unsafe_allow_html=True)
         save_clicked = st.button("💾 저장", key=f"save_{card_id}")
-    with col2:
         add_clicked = st.button("＋ 추가", key=f"add_{card_id}")
-    with col3:
         delete_clicked = st.button("🗑 삭제", key=f"delete_{card_id}")
+        st.markdown("</div>", unsafe_allow_html=True)
 
     # 카드와 다음 카드 사이 구분선
     st.markdown("---")
