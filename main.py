@@ -38,6 +38,7 @@ def get_supabase_client() -> Client:
 supabase = get_supabase_client()
 TABLE_NAME = "memoking_pages"
 
+
 # -----------------------------
 # 유틸 / 데이터 모델
 # -----------------------------
@@ -106,7 +107,7 @@ def bg_color(level: int) -> str:
 
 
 def move_block(blocks: List[Dict[str, Any]], block_id: str, direction: str):
-    """폴더는 자식까지 묶어서 이동, 일반 블록은 한 칸 이동"""
+    """폴더는 자식까지 묶어서 이동, 일반 블록은 한 칸씩 이동"""
     idx = get_block_index(blocks, block_id)
     if idx == -1:
         return
@@ -270,7 +271,7 @@ def save_current_page():
 
 
 # -----------------------------
-# 스타일 (카드 라인 / 사이드바 배경 등)
+# 스타일 (사이드바 폭, 버튼 크기, 카드 라인)
 # -----------------------------
 st.markdown(
     """
@@ -285,26 +286,20 @@ body {
 }
 [data-testid="stSidebar"] {
     background-color: #e4e5ea;
+    min-width: 180px;   /* 사이드바 폭 줄이기 */
+    max-width: 220px;
 }
-.memo-card {
-    border-radius: 16px;
-    padding: 10px 12px;
-    margin-bottom: 10px;
-    border: 1px solid #d0d0d0;
+.sidebar-icon-btn button {
+    padding: 0.2rem;
+    font-size: 0.9rem;
 }
-.memo-header-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-    margin-bottom: 4px;
-    font-size: 12px;
+.memo-tool-btn button {
+    padding: 0.1rem 0.3rem;
+    font-size: 0.7rem;
 }
-.memo-header-left {
-    font-weight: 600;
-}
-.memo-header-right button {
-    margin-left: 2px;
+.memo-card-inner {
+    border-radius: 12px;
+    padding: 6px 8px;
 }
 </style>
 """,
@@ -349,31 +344,45 @@ with st.sidebar:
 
     st.markdown("---")
 
-    if st.button("＋ 새 페이지", use_container_width=True):
-        max_idx = max((p["order_index"] for p in pages), default=-1)
-        page = new_page(f"새 페이지 {max_idx + 2}")
-        page["order_index"] = max_idx + 1
-        insert_page(page)
-        load_pages_to_state()
-        st.session_state["selected_page_id"] = page["id"]
-        load_current_page()
-        st.rerun()
+    # 아래쪽: 3개의 아이콘 버튼을 가로로
+    col_new, col_del, col_edit = st.columns(3)
 
-    if st.button("🗑 삭제", use_container_width=True):
-        st.session_state["show_delete_page_prompt"] = True
+    with col_new:
+        st.markdown('<div class="sidebar-icon-btn">', unsafe_allow_html=True)
+        if st.button("➕", key="btn_new_page", use_container_width=True):
+            max_idx = max((p["order_index"] for p in pages), default=-1)
+            page = new_page(f"새 페이지 {max_idx + 2}")
+            page["order_index"] = max_idx + 1
+            insert_page(page)
+            load_pages_to_state()
+            st.session_state["selected_page_id"] = page["id"]
+            load_current_page()
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    if st.button("✏️ 편집", use_container_width=True):
-        st.session_state["show_rename_page_prompt"] = True
-        # 현재 제목을 임시 변수에 세팅
-        cur = next((p for p in pages if p["id"] == st.session_state["selected_page_id"]), None)
-        st.session_state["rename_title_temp"] = cur["title"] if cur else ""
+    with col_del:
+        st.markdown('<div class="sidebar-icon-btn">', unsafe_allow_html=True)
+        if st.button("🗑", key="btn_delete_page", use_container_width=True):
+            st.session_state["show_delete_page_prompt"] = True
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    # 페이지 삭제 확인 박스 (사이드바 안)
+    with col_edit:
+        st.markdown('<div class="sidebar-icon-btn">', unsafe_allow_html=True)
+        if st.button("✏️", key="btn_rename_page", use_container_width=True):
+            st.session_state["show_rename_page_prompt"] = True
+            cur = next(
+                (p for p in pages if p["id"] == st.session_state["selected_page_id"]),
+                None,
+            )
+            st.session_state["rename_title_temp"] = cur["title"] if cur else ""
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # 삭제 확인
     if st.session_state.get("show_delete_page_prompt", False):
         st.warning("페이지를 삭제하시겠습니까?")
         c1, c2 = st.columns(2)
         with c1:
-            if st.button("삭제 확인"):
+            if st.button("삭제", key="confirm_delete_page"):
                 pid = st.session_state.get("selected_page_id")
                 if pid:
                     delete_page_db(pid)
@@ -385,18 +394,18 @@ with st.sidebar:
                 st.session_state["show_delete_page_prompt"] = False
                 st.rerun()
         with c2:
-            if st.button("취소"):
+            if st.button("취소", key="cancel_delete_page"):
                 st.session_state["show_delete_page_prompt"] = False
                 st.rerun()
 
-    # 페이지 제목 편집 박스 (사이드바 안)
+    # 제목 편집
     if st.session_state.get("show_rename_page_prompt", False):
         st.info("페이지 제목을 수정하세요.")
         new_title = st.text_input(
-            "새 제목",
+            "",
             value=st.session_state.get("rename_title_temp", ""),
-            label_visibility="collapsed",
             key="rename_page_input_sidebar",
+            label_visibility="collapsed",
         )
         c1, c2 = st.columns(2)
         with c1:
@@ -424,7 +433,7 @@ st.markdown('<div class="memoking-main">', unsafe_allow_html=True)
 if not page:
     st.info("왼쪽 사이드바에서 페이지를 선택하거나 새 페이지를 만들어주세요.")
 else:
-    # --- 상단 헤더: 제목/부제 라벨만 (컴팩트) ---
+    # 상단: 제목 / 부제 (라벨만)
     st.markdown(
         f"<div style='font-weight:700;font-size:1.1rem;margin-bottom:2px;'>{page['title']}</div>",
         unsafe_allow_html=True,
@@ -434,92 +443,104 @@ else:
         st.markdown(
             f"<div style='color:#666;font-size:0.9rem;margin-bottom:8px;'>{subtitle}</div>",
             unsafe_allow_html=True,
-    )
+        )
     st.markdown("---")
 
     blocks: List[Dict[str, Any]] = page["blocks"]
 
-    # --- 블록 렌더링 ---
+    # 카드 렌더링 함수
     def render_block(block: Dict[str, Any]):
         btype = block["type"]
         level = block.get("bg_level", 1)
         color = bg_color(level)
 
-        st.markdown(
-            f'<div class="memo-card" style="background-color:{color}">',
-            unsafe_allow_html=True,
-        )
-
-        # 상단 컨트롤 가로 정렬
-        c_title, c_up, c_down, c_bg, c_del = st.columns([8, 1, 1, 1, 1])
-
-        # 왼쪽: 폴더/카드 제목 레이블
-        with c_title:
-            if btype == "folder":
-                label = block.get("title", "폴더")
-            elif btype == "text":
-                label = block.get("title", "텍스트 카드")
-            else:
-                label = "포인트 카드"
+        with st.container(border=True):
+            # 카드 배경
             st.markdown(
-                f"<div style='font-size:12px;font-weight:600;'>{label}</div>",
+                f"<div class='memo-card-inner' style='background-color:{color};'>",
                 unsafe_allow_html=True,
             )
 
-        # 오른쪽: 버튼들 (위/아래/색/삭제)
-        with c_up:
-            if st.button("↑", key=f"up_{block['id']}"):
-                move_block(blocks, block["id"], "up")
-                save_current_page()
-                st.rerun()
-        with c_down:
-            if st.button("↓", key=f"down_{block['id']}"):
-                move_block(blocks, block["id"], "down")
-                save_current_page()
-                st.rerun()
-        with c_bg:
-            if st.button("🎨", key=f"bg_{block['id']}"):
-                toggle_bg(block)
-                save_current_page()
-                st.rerun()
-        with c_del:
-            if st.button("🗑", key=f"del_{block['id']}"):
-                st.session_state["pending_delete_block_id"] = block["id"]
-                st.session_state["show_delete_block_prompt"] = True
+            # 상단: 제목 라벨 + 작은 아이콘 버튼 4개 (가로)
+            h1, h2, h3, h4, h5 = st.columns([7, 1, 1, 1, 1])
 
-        # 본문 입력 영역 (제목/내용)
-        if btype == "folder":
-            block["title"] = st.text_input(
-                "",
-                value=block.get("title", ""),
-                key=f"folder_title_{block['id']}",
-                label_visibility="collapsed",
-            )
-        elif btype == "text":
-            block["title"] = st.text_input(
-                "",
-                value=block.get("title", ""),
-                key=f"text_title_{block['id']}",
-                label_visibility="collapsed",
-            )
-            block["content"] = st.text_area(
-                "",
-                value=block.get("content", ""),
-                key=f"text_content_{block['id']}",
-                height=120,
-                label_visibility="collapsed",
-            )
-        elif btype == "point":
-            block["content"] = st.text_input(
-                "",
-                value=block.get("content", ""),
-                key=f"point_content_{block['id']}",
-                label_visibility="collapsed",
-            )
+            with h1:
+                if btype == "folder":
+                    label = block.get("title", "폴더")
+                elif btype == "text":
+                    label = block.get("title", "텍스트 카드")
+                else:
+                    label = "포인트 카드"
+                st.markdown(
+                    f"<div style='font-size:12px;font-weight:600;'>{label}</div>",
+                    unsafe_allow_html=True,
+                )
 
-        st.markdown("</div>", unsafe_allow_html=True)
+            # 각 버튼은 memo-tool-btn 클래스로 작게
+            with h2:
+                st.markdown('<div class="memo-tool-btn">', unsafe_allow_html=True)
+                if st.button("↑", key=f"up_{block['id']}"):
+                    move_block(blocks, block["id"], "up")
+                    save_current_page()
+                    st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
 
-    # 폴더 + 자식 구조에 맞게 순서대로 렌더링
+            with h3:
+                st.markdown('<div class="memo-tool-btn">', unsafe_allow_html=True)
+                if st.button("↓", key=f"down_{block['id']}"):
+                    move_block(blocks, block["id"], "down")
+                    save_current_page()
+                    st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            with h4:
+                st.markdown('<div class="memo-tool-btn">', unsafe_allow_html=True)
+                if st.button("🎨", key=f"bg_{block['id']}"):
+                    toggle_bg(block)
+                    save_current_page()
+                    st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            with h5:
+                st.markdown('<div class="memo-tool-btn">', unsafe_allow_html=True)
+                if st.button("🗑", key=f"del_{block['id']}"):
+                    st.session_state["pending_delete_block_id"] = block["id"]
+                    st.session_state["show_delete_block_prompt"] = True
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            # 본문 입력 영역 (라벨 숨김)
+            if btype == "folder":
+                block["title"] = st.text_input(
+                    "",
+                    value=block.get("title", ""),
+                    key=f"folder_title_{block['id']}",
+                    label_visibility="collapsed",
+                )
+            elif btype == "text":
+                block["title"] = st.text_input(
+                    "",
+                    value=block.get("title", ""),
+                    key=f"text_title_{block['id']}",
+                    label_visibility="collapsed",
+                )
+                block["content"] = st.text_area(
+                    "",
+                    value=block.get("content", ""),
+                    key=f"text_content_{block['id']}",
+                    height=120,
+                    label_visibility="collapsed",
+                )
+            elif btype == "point":
+                block["content"] = st.text_input(
+                    "",
+                    value=block.get("content", ""),
+                    key=f"point_content_{block['id']}",
+                    label_visibility="collapsed",
+                )
+
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    # 폴더 + 자식 구조대로 렌더링
     i = 0
     while i < len(blocks):
         b = blocks[i]
@@ -560,7 +581,7 @@ else:
 
 st.markdown("</div>", unsafe_allow_html=True)
 
-# ===== 블록 삭제 확인 박스 (본문 아래) =====
+# ===== 블록 삭제 확인 (본문 아래) =====
 if st.session_state.get("show_delete_block_prompt", False):
     st.warning("이 카드(또는 폴더)를 삭제하시겠습니까?")
     c1, c2 = st.columns(2)
