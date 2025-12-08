@@ -47,3 +47,4 @@ def login_view():
 if not st.session_state["logged_in"]:
     login_view()
     st.stop()
+
