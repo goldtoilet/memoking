@@ -1,5 +1,6 @@
 import streamlit as st
 import sqlite3
+from streamlit_option_menu import option_menu
 
 st.set_page_config(page_title="MemoKing", layout="wide")
 
@@ -120,12 +121,12 @@ st.markdown(
     background-color: #f4f5f7;
 }
 
-/* 세로 블럭 간격 전체적으로 줄이기 (v-spacing) */
+/* 세로 블럭 간격 전체적으로 줄이기 */
 .stVerticalBlock {
     gap: 0.25rem !important;
 }
 
-/* 입력 라벨 숨기기 – 위에 쓸모없는 빈 공간 제거 */
+/* 라벨 숨기기 */
 .stTextInput label, .stTextArea label {
     display: none !important;
 }
@@ -149,14 +150,14 @@ st.markdown(
     font-size: 0.95rem !important;
 }
 
-/* 기본 버튼 – 작고 컴팩트하게 */
+/* 버튼 – 작고 컴팩트하게 */
 .stButton button {
     padding: 0.18rem 0.6rem !important;
     font-size: 0.80rem !important;
     border-radius: 8px !important;
 }
 
-/* 구분선 간격 줄이기 */
+/* 구분선 간격 */
 hr {
     margin-top: 0.45rem !important;
     margin-bottom: 0.45rem !important;
@@ -166,34 +167,37 @@ hr {
     unsafe_allow_html=True,
 )
 
-# 툴바 상태
-if "toolbar_action" not in st.session_state:
-    st.session_state["toolbar_action"] = "-"  # 아무 것도 선택 안 된 기본값
-
-# 페이지 이름 변경 상태
+# ---------------------------
+# 세션 상태 기본값
+# ---------------------------
+if "card_toolbar" not in st.session_state:
+    st.session_state["card_toolbar"] = "-"  # 카드 툴바 라디오 값
+if "card_toolbar_last" not in st.session_state:
+    st.session_state["card_toolbar_last"] = "-"
+if "page_toolbar" not in st.session_state:
+    st.session_state["page_toolbar"] = "-"  # 페이지 툴바 라디오 값
+if "page_toolbar_last" not in st.session_state:
+    st.session_state["page_toolbar_last"] = "-"
 if "renaming_page" not in st.session_state:
     st.session_state["renaming_page"] = False
 if "rename_temp" not in st.session_state:
     st.session_state["rename_temp"] = ""
 
-
 # ---------------------------
-# 사이드바: 페이지 목록 (라디오 + 간단 버튼)
+# 사이드바 : 이전 스타일(option_menu) + 페이지 툴바(radio)
 # ---------------------------
 with st.sidebar:
     st.markdown("### memo king")
-    st.markdown("---")
 
     pages = get_pages()
     if not pages:
-        # 최초 실행 시 기본 페이지 생성
         add_page("아이디어")
         pages = get_pages()
 
     page_ids = [p[0] for p in pages]
     page_titles = [p[1] for p in pages]
 
-    # 현재 페이지 선택 인덱스
+    # 현재 선택 페이지 인덱스
     current_index = 0
     if (
         "current_page_id" in st.session_state
@@ -201,39 +205,71 @@ with st.sidebar:
     ):
         current_index = page_ids.index(st.session_state["current_page_id"])
 
-    selected_title = st.radio("페이지", page_titles, index=current_index)
-    current_page_id = page_ids[page_titles.index(selected_title)]
+    # 이전에 쓰던 option_menu 스타일
+    choice = option_menu(
+        "",
+        page_titles,
+        icons=["journal-text"] * len(page_titles),
+        menu_icon="menu-app",
+        default_index=current_index,
+        styles={
+            "container": {"background-color": "#f5f6fa"},
+            "icon": {"color": "#4c4c4c"},
+            "nav-link": {
+                "font-size": "15px",
+                "padding": "6px 10px",
+                "color": "#333",
+                "--hover-color": "#e4e6eb",
+            },
+            "nav-link-selected": {
+                "background-color": "#dcdfe5",
+                "color": "black",
+            },
+        },
+    )
+
+    current_page_id = page_ids[page_titles.index(choice)]
     st.session_state["current_page_id"] = current_page_id
 
     st.markdown("---")
 
-    # 페이지 관리용 작은 버튼들
-    add_page_clicked = st.button("➕ 페이지 추가")
-    delete_page_clicked = st.button("🗑 페이지 삭제")
-    rename_page_clicked = st.button("✏️ 페이지 이름 변경")
+    # 페이지용 툴바 (가로형 라디오, 아이콘 3개)
+    st.radio(
+        "",
+        ["-", "➕", "🗑", "✏️"],
+        key="page_toolbar",
+        horizontal=True,
+        label_visibility="collapsed",
+    )
+    page_action = st.session_state["page_toolbar"]
 
-    if add_page_clicked:
+    # ➕ / 🗑 은 한 번만 실행되도록 last 값 비교
+    if page_action == "➕" and st.session_state["page_toolbar_last"] != "➕":
         add_page("새 페이지")
+        st.session_state["page_toolbar_last"] = "➕"
         st.rerun()
-
-    if delete_page_clicked:
+    elif page_action == "🗑" and st.session_state["page_toolbar_last"] != "🗑":
         delete_page(current_page_id)
+        st.session_state["page_toolbar_last"] = "🗑"
         st.rerun()
+    else:
+        # 다른 상태는 last 값만 갱신
+        st.session_state["page_toolbar_last"] = page_action
 
-    if rename_page_clicked:
+    # ✏️ 이 선택되면 이름 변경 UI 표시
+    if page_action == "✏️":
         st.session_state["renaming_page"] = True
-        st.session_state["rename_temp"] = selected_title
+        st.session_state["rename_temp"] = choice
 
     if st.session_state["renaming_page"]:
-        st.markdown("---")
         new_title = st.text_input(
-            "새 이름",
+            "새 페이지 이름",
             value=st.session_state["rename_temp"],
             key="rename_input",
         )
         c1, c2 = st.columns(2)
         with c1:
-            if st.button("저장", key="rename_save"):
+            if st.button("이름 변경", key="rename_save"):
                 rename_page(current_page_id, new_title.strip() or "제목 없음")
                 st.session_state["renaming_page"] = False
                 st.rerun()
@@ -243,32 +279,31 @@ with st.sidebar:
                 st.rerun()
 
 # ---------------------------
-# 본문 상단: 페이지 제목 + 공용 툴바(radio)
+# 본문 상단 : 페이지 제목 + 카드 툴바(radio)
 # ---------------------------
-st.markdown(f"## {selected_title}")
+st.markdown(f"## {choice}")
 st.markdown("---")
 
-# 카드 목록 불러오기
+# 카드 목록
 cards = get_cards(current_page_id)
 if not cards:
     add_card(current_page_id)
     cards = get_cards(current_page_id)
 
-# 툴바 radio (상단)
-toolbar_options = ["-", "💾 저장", "＋ 카드 추가", "🗑 카드 삭제"]
+# 카드 툴바 (저장 / 추가 / 삭제)
 st.radio(
     "",
-    toolbar_options,
-    key="toolbar_action",
+    ["-", "💾 저장", "＋ 카드 추가", "🗑 카드 삭제"],
+    key="card_toolbar",
     horizontal=True,
     label_visibility="collapsed",
 )
+card_action = st.session_state["card_toolbar"]
 
 # ---------------------------
-# 카드 렌더링 (제목 + 내용 = 하나의 컴포넌트)
+# 카드 렌더링 (제목 + 내용)
 # ---------------------------
 for card_id, title, content in cards:
-    # 제목
     st.text_input(
         "",
         value=title,
@@ -277,7 +312,6 @@ for card_id, title, content in cards:
         placeholder="제목 입력",
     )
 
-    # 내용
     st.text_area(
         "",
         value=content,
@@ -290,30 +324,32 @@ for card_id, title, content in cards:
     st.markdown("---")
 
 # ---------------------------
-# 툴바 동작 처리 (맨 아래에서 한 번에)
+# 카드 툴바 동작 처리
 # ---------------------------
-action = st.session_state.get("toolbar_action", "-")
-
-# 1) 전체 저장
-if action == "💾 저장":
+# 1) 전체 저장 (한 번만 실행)
+if card_action == "💾 저장" and st.session_state["card_toolbar_last"] != "💾 저장":
     for card_id, title, content in cards:
         new_title = st.session_state.get(f"title_{card_id}", title)
         new_content = st.session_state.get(f"content_{card_id}", content)
         update_card(card_id, new_title, new_content)
 
-    st.session_state["toolbar_action"] = "-"  # 다시 기본 상태로
+    st.session_state["card_toolbar_last"] = "💾 저장"
     st.success("모든 카드가 저장되었습니다.")
     st.rerun()
 
-# 2) 카드 추가
-elif action == "＋ 카드 추가":
+# 2) 카드 추가 (한 번만 실행)
+elif card_action == "＋ 카드 추가" and st.session_state["card_toolbar_last"] != "＋ 카드 추가":
     add_card(current_page_id)
-    st.session_state["toolbar_action"] = "-"
+    st.session_state["card_toolbar_last"] = "＋ 카드 추가"
     st.rerun()
 
+else:
+    # 다른 상태는 last 값만 갱신
+    st.session_state["card_toolbar_last"] = card_action
+
 # 3) 카드 삭제 모드
-elif action == "🗑 카드 삭제":
-    st.info("삭제할 카드 제목을 입력한 뒤, 아래 '카드 삭제 실행'을 눌러주세요.")
+if card_action == "🗑 카드 삭제":
+    st.info("삭제할 카드의 제목을 입력한 뒤 '카드 삭제 실행'을 눌러주세요.")
     delete_title = st.text_input(
         "삭제할 카드 제목",
         key="delete_title_input",
@@ -328,5 +364,4 @@ elif action == "🗑 카드 삭제":
                 st.warning(f"'{delete_title}' 제목의 카드를 찾을 수 없습니다.")
         else:
             st.warning("삭제할 카드 제목을 입력해주세요.")
-        st.session_state["toolbar_action"] = "-"
         st.rerun()
