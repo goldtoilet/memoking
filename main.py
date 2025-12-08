@@ -6,6 +6,7 @@ from typing import Dict, Any, List, Optional
 import streamlit as st
 from dotenv import load_dotenv
 from supabase import create_client, Client
+from streamlit_option_menu import option_menu  # ← 사이드바 메뉴용
 
 # ------------------------------------------------
 # 1. 페이지 설정 (항상 맨 위)
@@ -240,21 +241,6 @@ html, body, [class^="css"], .stMarkdown, .stTextInput, .stTextArea {
     letter-spacing: 0.06em;
 }
 
-/* 사이드바 라디오: 한 줄 네비게이션 느낌 */
-[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label {
-    display: block;
-    padding: 2px 4px 4px 0;
-    margin-bottom: 2px;
-    font-size: 0.85rem;
-    border-bottom: 1px solid #d0d3dd;
-    background-color: transparent;
-}
-
-/* 라디오 동그라미 숨기기 */
-[data-testid="stSidebar"] input[type="radio"] {
-    display: none;
-}
-
 /* 아이콘 버튼 더 작게 */
 .sidebar-icon-btn button {
     padding: 0.05rem 0.25rem;
@@ -347,12 +333,36 @@ with st.sidebar:
     else:
         current_index = 0
 
-    selected_title = st.radio(
-        "페이지 선택",
+    # option_menu 로 네비게이션 구성
+    choice = option_menu(
+        None,                      # 상단 타이틀은 따로 있으니 None
         page_titles,
-        index=current_index,
-        label_visibility="collapsed",
+        icons=["bi bi-journal-text"] * len(page_titles),
+        menu_icon="app-indicator",
+        default_index=current_index,
+        styles={
+            "container": {
+                "padding": "4px 0px",
+                "background-color": "#e7e9f0",
+                "border-radius": "0px",
+            },
+            "icon": {"color": "#555", "font-size": "18px"},
+            "nav-link": {
+                "font-size": "0.9rem",
+                "text-align": "left",
+                "margin": "2px 0px",
+                "--hover-color": "#dde1ea",
+                "padding": "4px 6px",
+            },
+            "nav-link-selected": {
+                "background-color": "#dde1ea",
+                "color": "black",
+                "border-radius": "8px",
+            },
+        },
     )
+
+    selected_title = choice
     selected_id = page_ids[page_titles.index(selected_title)]
 
     if selected_id != current_id:
@@ -499,7 +509,7 @@ else:
     save_clicked = st.button("저장", type="primary", key="save_cards_btn")
     add_clicked = st.button("＋ 카드", key="add_card_btn")
     del_clicked = st.button("🗑 카드", key="delete_card_btn")
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
     # 버튼 동작 처리
     if save_clicked:
