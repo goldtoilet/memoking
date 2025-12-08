@@ -64,7 +64,10 @@ def rename_page(page_id, new_title):
 
 def get_cards(page_id):
     cur = db.cursor()
-    cur.execute("SELECT id, title, content FROM cards WHERE page_id=? ORDER BY id ASC", (page_id,))
+    cur.execute(
+        "SELECT id, title, content FROM cards WHERE page_id=? ORDER BY id ASC",
+        (page_id,),
+    )
     return cur.fetchall()
 
 
@@ -79,7 +82,10 @@ def add_card(page_id):
 
 def update_card(card_id, title, content):
     cur = db.cursor()
-    cur.execute("UPDATE cards SET title=?, content=? WHERE id=?", (title, content, card_id))
+    cur.execute(
+        "UPDATE cards SET title=?, content=? WHERE id=?",
+        (title, content, card_id),
+    )
     db.commit()
 
 
@@ -100,7 +106,12 @@ st.markdown(
     background-color: #f4f5f7;
 }
 
-/* 라벨 숨기기 */
+/* 세로 블럭 간격 전체적으로 줄이기 (v-spacing) */
+.stVerticalBlock {
+    gap: 0.45rem !important;
+}
+
+/* 라벨 숨기기 – 위에 쓸모없는 빈 공간 제거 */
 .stTextInput label, .stTextArea label {
     display: none !important;
 }
@@ -124,32 +135,41 @@ st.markdown(
     font-size: 0.95rem !important;
 }
 
-/* 버튼 조금 작게 */
+/* 기본 버튼 조금 작게 */
 .stButton button {
-    padding: 0.35rem 0.8rem;
+    padding: 0.32rem 0.75rem;
     font-size: 0.85rem;
 }
 
-/* ▼▼ 버튼 row 전용: columns가 모바일에서도 가로로 유지되도록 강제 ▼▼ */
+/* ▼ 버튼 row: Streamlit이 모바일에서 column으로 바꾸는 걸 덮어씌우기 */
 
-/* 버튼 row 감싸는 래퍼 안에서만 column/horizontalBlock 강제 오버라이드 */
-.btn-row-wrapper [data-testid="stHorizontalBlock"] {
+/* 이 wrapper 안에 있는 stHorizontalBlock 은 항상 가로 flex */
+.btn-row-wrapper .stHorizontalBlock {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
-    gap: 0.25rem !important;
+    align-items: center !important;
+    gap: 0.3rem !important;
 }
 
-.btn-row-wrapper [data-testid="column"] {
+/* 각 column 은 auto-width, 여백 최소화 */
+.btn-row-wrapper .stHorizontalBlock > div {
     flex: 0 0 auto !important;
     width: auto !important;
     padding: 0 !important;
+    margin: 0 !important;
 }
 
-/* 버튼 col 안의 버튼들이 가로로 왼쪽 정렬되도록 */
-.btn-row-wrapper [data-testid="stButton"] {
+/* 버튼 자체는 왼쪽 정렬 */
+.btn-row-wrapper .stButton {
     display: flex !important;
     justify-content: flex-start !important;
+}
+
+/* 카드와 카드 사이 구분선도 간격 줄이기 */
+hr {
+    margin-top: 0.6rem !important;
+    margin-bottom: 0.6rem !important;
 }
 </style>
 """,
@@ -173,7 +193,6 @@ with st.sidebar:
 
     pages = get_pages()
 
-    # 페이지가 없다면 하나 생성
     if not pages:
         add_page("아이디어")
         pages = get_pages()
@@ -181,9 +200,11 @@ with st.sidebar:
     page_titles = [p[1] for p in pages]
     page_ids = [p[0] for p in pages]
 
-    # 현재 선택 페이지 인덱스
     current_index = 0
-    if "current_page_id" in st.session_state and st.session_state["current_page_id"] in page_ids:
+    if (
+        "current_page_id" in st.session_state
+        and st.session_state["current_page_id"] in page_ids
+    ):
         current_index = page_ids.index(st.session_state["current_page_id"])
 
     choice = option_menu(
@@ -203,7 +224,7 @@ with st.sidebar:
             },
             "nav-link-selected": {
                 "background-color": "#dcdfe5",
-                "color": "black"
+                "color": "black",
             },
         },
     )
@@ -213,7 +234,7 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # ▼ 사이드바 하단 버튼 3개: btn-row-wrapper 로 감싸서 가로 고정
+    # ▼ 사이드바 하단 버튼 3개: wrapper + columns
     st.markdown('<div class="btn-row-wrapper">', unsafe_allow_html=True)
     colA, colB, colC = st.columns(3)
     with colA:
@@ -222,7 +243,7 @@ with st.sidebar:
         delete_page_clicked = st.button("🗑", help="페이지 삭제", key="btn_del_page")
     with colC:
         rename_page_clicked = st.button("✏️", help="페이지 이름 변경", key="btn_rename_page")
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
     if add_page_clicked:
         add_page("새 페이지")
@@ -265,7 +286,6 @@ st.markdown("---")
 
 cards = get_cards(current_page_id)
 
-# 카드가 없으면 자동 생성
 if not cards:
     add_card(current_page_id)
     cards = get_cards(current_page_id)
@@ -276,7 +296,6 @@ if not cards:
 for idx, card in enumerate(cards):
     card_id, title, content = card
 
-    # 카드 제목
     new_title = st.text_input(
         "",
         value=title,
@@ -285,7 +304,6 @@ for idx, card in enumerate(cards):
         placeholder="제목 입력",
     )
 
-    # 카드 내용
     new_content = st.text_area(
         "",
         value=content,
@@ -295,7 +313,7 @@ for idx, card in enumerate(cards):
         placeholder="내용을 입력하세요",
     )
 
-    # ▼ 카드 아래 버튼 3개: btn-row-wrapper 로 감싸서 가로 고정
+    # ▼ 카드 아래 버튼 row
     st.markdown('<div class="btn-row-wrapper">', unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -304,12 +322,10 @@ for idx, card in enumerate(cards):
         add_clicked = st.button("＋ 추가", key=f"add_{card_id}")
     with col3:
         delete_clicked = st.button("🗑 삭제", key=f"delete_{card_id}")
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    # 카드와 다음 카드 사이 구분선
     st.markdown("---")
 
-    # 버튼 동작
     if save_clicked:
         update_card(card_id, new_title, new_content)
         st.rerun()
