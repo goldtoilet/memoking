@@ -1,24 +1,26 @@
 import streamlit as st
 import sqlite3
-from streamlit_option_menu import option_menu
 
 st.set_page_config(page_title="MemoKing", layout="wide")
 
 # ---------------------------
-# DATABASE 초기화
+# DB 초기화 (SQLite)
 # ---------------------------
 def init_db():
     conn = sqlite3.connect("memo.db")
     cur = conn.cursor()
 
-    cur.execute("""
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS pages(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL
         )
-    """)
+        """
+    )
 
-    cur.execute("""
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS cards(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             page_id INTEGER,
@@ -26,10 +28,12 @@ def init_db():
             content TEXT,
             FOREIGN KEY(page_id) REFERENCES pages(id)
         )
-    """)
+        """
+    )
 
     conn.commit()
     return conn
+
 
 db = init_db()
 
@@ -49,20 +53,20 @@ def add_page(title="새 페이지"):
     return cur.lastrowid
 
 
-def delete_page(page_id):
+def delete_page(page_id: int):
     cur = db.cursor()
     cur.execute("DELETE FROM cards WHERE page_id=?", (page_id,))
     cur.execute("DELETE FROM pages WHERE id=?", (page_id,))
     db.commit()
 
 
-def rename_page(page_id, new_title):
+def rename_page(page_id: int, new_title: str):
     cur = db.cursor()
     cur.execute("UPDATE pages SET title=? WHERE id=?", (new_title, page_id))
     db.commit()
 
 
-def get_cards(page_id):
+def get_cards(page_id: int):
     cur = db.cursor()
     cur.execute(
         "SELECT id, title, content FROM cards WHERE page_id=? ORDER BY id ASC",
@@ -71,7 +75,7 @@ def get_cards(page_id):
     return cur.fetchall()
 
 
-def add_card(page_id):
+def add_card(page_id: int):
     cur = db.cursor()
     cur.execute(
         "INSERT INTO cards(page_id, title, content) VALUES (?, ?, ?)",
@@ -80,7 +84,7 @@ def add_card(page_id):
     db.commit()
 
 
-def update_card(card_id, title, content):
+def update_card(card_id: int, title: str, content: str):
     cur = db.cursor()
     cur.execute(
         "UPDATE cards SET title=?, content=? WHERE id=?",
@@ -89,14 +93,24 @@ def update_card(card_id, title, content):
     db.commit()
 
 
-def delete_card(card_id):
+def delete_card_by_title(page_id: int, title: str):
+    """같은 제목이 여러 개면 첫 번째 카드만 삭제."""
     cur = db.cursor()
-    cur.execute("DELETE FROM cards WHERE id=?", (card_id,))
-    db.commit()
+    cur.execute(
+        "SELECT id FROM cards WHERE page_id=? AND title=? ORDER BY id ASC",
+        (page_id, title),
+    )
+    row = cur.fetchone()
+    if row:
+        card_id = row[0]
+        cur.execute("DELETE FROM cards WHERE id=?", (card_id,))
+        db.commit()
+        return True
+    return False
 
 
 # ---------------------------
-# 공통 스타일
+# 공통 스타일 (CSS)
 # ---------------------------
 st.markdown(
     """
@@ -111,7 +125,7 @@ st.markdown(
     gap: 0.25rem !important;
 }
 
-/* 라벨 숨기기 – 위쪽 쓸모없는 빈 공간 제거 */
+/* 입력 라벨 숨기기 – 위에 쓸모없는 빈 공간 제거 */
 .stTextInput label, .stTextArea label {
     display: none !important;
 }
@@ -129,30 +143,34 @@ st.markdown(
     font-weight: 700 !important;
 }
 
-/* textarea 높이 줄이기 */
+/* textarea 높이 */
 .stTextArea textarea {
     min-height: 110px !important;
     font-size: 0.95rem !important;
 }
 
-/* 기본 버튼 – 작게, 컴팩트하게 */
+/* 기본 버튼 – 작고 컴팩트하게 */
 .stButton button {
-    padding: 0.16rem 0.55rem !important;
+    padding: 0.18rem 0.6rem !important;
     font-size: 0.80rem !important;
     border-radius: 8px !important;
 }
 
-/* 카드 안/밖 구분선 간격도 줄이기 */
+/* 구분선 간격 줄이기 */
 hr {
-    margin-top: 0.5rem !important;
-    margin-bottom: 0.5rem !important;
+    margin-top: 0.45rem !important;
+    margin-bottom: 0.45rem !important;
 }
 </style>
 """,
     unsafe_allow_html=True,
 )
 
-# 페이지 제목 수정 상태
+# 툴바 상태
+if "toolbar_action" not in st.session_state:
+    st.session_state["toolbar_action"] = "-"  # 아무 것도 선택 안 된 기본값
+
+# 페이지 이름 변경 상태
 if "renaming_page" not in st.session_state:
     st.session_state["renaming_page"] = False
 if "rename_temp" not in st.session_state:
@@ -160,22 +178,22 @@ if "rename_temp" not in st.session_state:
 
 
 # ---------------------------
-# 사이드바
+# 사이드바: 페이지 목록 (라디오 + 간단 버튼)
 # ---------------------------
 with st.sidebar:
-
-    st.markdown("### ✨ MemoKing")
+    st.markdown("### memo king")
     st.markdown("---")
 
     pages = get_pages()
-
     if not pages:
+        # 최초 실행 시 기본 페이지 생성
         add_page("아이디어")
         pages = get_pages()
 
-    page_titles = [p[1] for p in pages]
     page_ids = [p[0] for p in pages]
+    page_titles = [p[1] for p in pages]
 
+    # 현재 페이지 선택 인덱스
     current_index = 0
     if (
         "current_page_id" in st.session_state
@@ -183,37 +201,16 @@ with st.sidebar:
     ):
         current_index = page_ids.index(st.session_state["current_page_id"])
 
-    choice = option_menu(
-        None,
-        page_titles,
-        icons=["journal-text"] * len(page_titles),
-        menu_icon="menu-app",
-        default_index=current_index,
-        styles={
-            "container": {"background-color": "#f5f6fa"},
-            "icon": {"color": "#4c4c4c"},
-            "nav-link": {
-                "font-size": "15px",
-                "padding": "6px 10px",
-                "color": "#333",
-                "--hover-color": "#e4e6eb",
-            },
-            "nav-link-selected": {
-                "background-color": "#dcdfe5",
-                "color": "black",
-            },
-        },
-    )
-
-    current_page_id = page_ids[page_titles.index(choice)]
+    selected_title = st.radio("페이지", page_titles, index=current_index)
+    current_page_id = page_ids[page_titles.index(selected_title)]
     st.session_state["current_page_id"] = current_page_id
 
     st.markdown("---")
 
-    # 사이드바 하단 버튼 3개 (세로형이지만 작게)
-    add_page_clicked = st.button("➕ 페이지", key="btn_add_page")
-    delete_page_clicked = st.button("🗑 페이지 삭제", key="btn_del_page")
-    rename_page_clicked = st.button("✏️ 이름 변경", key="btn_rename_page")
+    # 페이지 관리용 작은 버튼들
+    add_page_clicked = st.button("➕ 페이지 추가")
+    delete_page_clicked = st.button("🗑 페이지 삭제")
+    rename_page_clicked = st.button("✏️ 페이지 이름 변경")
 
     if add_page_clicked:
         add_page("새 페이지")
@@ -225,16 +222,14 @@ with st.sidebar:
 
     if rename_page_clicked:
         st.session_state["renaming_page"] = True
-        st.session_state["rename_temp"] = choice
+        st.session_state["rename_temp"] = selected_title
 
-    # 페이지 이름 수정 UI
     if st.session_state["renaming_page"]:
-        st.markdown("------")
+        st.markdown("---")
         new_title = st.text_input(
-            "",
+            "새 이름",
             value=st.session_state["rename_temp"],
             key="rename_input",
-            label_visibility="collapsed",
         )
         c1, c2 = st.columns(2)
         with c1:
@@ -247,26 +242,34 @@ with st.sidebar:
                 st.session_state["renaming_page"] = False
                 st.rerun()
 
-
 # ---------------------------
-# 본문 UI
+# 본문 상단: 페이지 제목 + 공용 툴바(radio)
 # ---------------------------
-st.markdown(f"## {choice}")
+st.markdown(f"## {selected_title}")
 st.markdown("---")
 
+# 카드 목록 불러오기
 cards = get_cards(current_page_id)
-
 if not cards:
     add_card(current_page_id)
     cards = get_cards(current_page_id)
 
-# ---------------------------
-# 카드 렌더링
-# ---------------------------
-for idx, card in enumerate(cards):
-    card_id, title, content = card
+# 툴바 radio (상단)
+toolbar_options = ["-", "💾 저장", "＋ 카드 추가", "🗑 카드 삭제"]
+st.radio(
+    "",
+    toolbar_options,
+    key="toolbar_action",
+    horizontal=True,
+    label_visibility="collapsed",
+)
 
-    new_title = st.text_input(
+# ---------------------------
+# 카드 렌더링 (제목 + 내용 = 하나의 컴포넌트)
+# ---------------------------
+for card_id, title, content in cards:
+    # 제목
+    st.text_input(
         "",
         value=title,
         key=f"title_{card_id}",
@@ -274,7 +277,8 @@ for idx, card in enumerate(cards):
         placeholder="제목 입력",
     )
 
-    new_content = st.text_area(
+    # 내용
+    st.text_area(
         "",
         value=content,
         height=110,
@@ -283,19 +287,46 @@ for idx, card in enumerate(cards):
         placeholder="내용을 입력하세요",
     )
 
-    # 카드 아래 버튼 3개 (세로형, 작게)
-    save_clicked = st.button("💾 저장", key=f"save_{card_id}")
-    add_clicked = st.button("＋ 카드 추가", key=f"add_{card_id}")
-    delete_clicked = st.button("🗑 카드 삭제", key=f"delete_{card_id}")
-
     st.markdown("---")
 
-    if save_clicked:
+# ---------------------------
+# 툴바 동작 처리 (맨 아래에서 한 번에)
+# ---------------------------
+action = st.session_state.get("toolbar_action", "-")
+
+# 1) 전체 저장
+if action == "💾 저장":
+    for card_id, title, content in cards:
+        new_title = st.session_state.get(f"title_{card_id}", title)
+        new_content = st.session_state.get(f"content_{card_id}", content)
         update_card(card_id, new_title, new_content)
-        st.rerun()
-    if add_clicked:
-        add_card(current_page_id)
-        st.rerun()
-    if delete_clicked:
-        delete_card(card_id)
+
+    st.session_state["toolbar_action"] = "-"  # 다시 기본 상태로
+    st.success("모든 카드가 저장되었습니다.")
+    st.rerun()
+
+# 2) 카드 추가
+elif action == "＋ 카드 추가":
+    add_card(current_page_id)
+    st.session_state["toolbar_action"] = "-"
+    st.rerun()
+
+# 3) 카드 삭제 모드
+elif action == "🗑 카드 삭제":
+    st.info("삭제할 카드 제목을 입력한 뒤, 아래 '카드 삭제 실행'을 눌러주세요.")
+    delete_title = st.text_input(
+        "삭제할 카드 제목",
+        key="delete_title_input",
+        placeholder="예: 카드1",
+    )
+    if st.button("카드 삭제 실행"):
+        if delete_title.strip():
+            ok = delete_card_by_title(current_page_id, delete_title.strip())
+            if ok:
+                st.success(f"'{delete_title}' 카드가 삭제되었습니다.")
+            else:
+                st.warning(f"'{delete_title}' 제목의 카드를 찾을 수 없습니다.")
+        else:
+            st.warning("삭제할 카드 제목을 입력해주세요.")
+        st.session_state["toolbar_action"] = "-"
         st.rerun()
