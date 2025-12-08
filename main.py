@@ -1,32 +1,29 @@
 # main.py
 import os
 import uuid
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 
 import streamlit as st
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
-# -----------------------------
-# 페이지 설정 (가장 먼저!)
-# -----------------------------
+# ------------------------------------------------
+# 1. 페이지 설정 (항상 맨 위)
+# ------------------------------------------------
 st.set_page_config(
     page_title="memoking",
     page_icon="📝",
     layout="wide",
 )
 
-# -----------------------------
-# 환경 변수 로딩
-# -----------------------------
+# ------------------------------------------------
+# 2. 환경변수 & Supabase 클라이언트
+# ------------------------------------------------
 load_dotenv()
 SUPABASE_URL = st.secrets.get("SUPABASE_URL", os.getenv("SUPABASE_URL", ""))
 SUPABASE_KEY = st.secrets.get("SUPABASE_ANON_KEY", os.getenv("SUPABASE_ANON_KEY", ""))
 
 
-# -----------------------------
-# Supabase 클라이언트
-# -----------------------------
 @st.cache_resource
 def get_supabase_client() -> Client:
     if not SUPABASE_URL or not SUPABASE_KEY:
@@ -38,139 +35,14 @@ def get_supabase_client() -> Client:
 supabase = get_supabase_client()
 TABLE_NAME = "memoking_pages"
 
-
-# -----------------------------
-# 유틸 / 데이터 모델
-# -----------------------------
-def new_page(title: str = "새 페이지") -> Dict[str, Any]:
-    return {
-        "id": str(uuid.uuid4()),
-        "title": title,
-        "subtitle": "",
-        "order_index": 0,
-        "blocks": [],
-    }
-
-
-def new_folder(title: str = "새 폴더") -> Dict[str, Any]:
-    return {
-        "id": f"folder-{uuid.uuid4()}",
-        "type": "folder",
-        "title": title,
-        "collapsed": False,
-        "bg_level": 1,
-        "children": [],
-    }
-
-
-def new_text_block(title: str = "제목", content: str = "") -> Dict[str, Any]:
-    return {
-        "id": f"text-{uuid.uuid4()}",
-        "type": "text",
-        "title": title,
-        "content": content,
-        "bg_level": 1,
-        "folder_id": None,
-    }
-
-
-def new_point_block(content: str = "포인트 카드") -> Dict[str, Any]:
-    return {
-        "id": f"point-{uuid.uuid4()}",
-        "type": "point",
-        "content": content,
-        "bg_level": 1,
-        "folder_id": None,
-    }
-
-
-def get_block_index(blocks: List[Dict[str, Any]], block_id: str) -> int:
-    for i, b in enumerate(blocks):
-        if b["id"] == block_id:
-            return i
-    return -1
-
-
-def toggle_bg(block: Dict[str, Any]):
-    level = block.get("bg_level", 1)
-    level = 1 if level >= 3 else level + 1
-    block["bg_level"] = level
-
-
-def bg_color(level: int) -> str:
-    if level == 1:
-        return "#FEFBE1"
-    elif level == 2:
-        return "#F7E38F"
-    else:
-        return "#F0C93D"
-
-
-def move_block(blocks: List[Dict[str, Any]], block_id: str, direction: str):
-    """폴더는 자식까지 묶어서 이동, 일반 블록은 한 칸씩 이동"""
-    idx = get_block_index(blocks, block_id)
-    if idx == -1:
-        return
-
-    block = blocks[idx]
-    if block["type"] == "folder":
-        start = idx
-        end = idx + 1
-        folder_id = block["id"]
-        while end < len(blocks) and blocks[end].get("folder_id") == folder_id:
-            end += 1
-
-        if direction == "up" and start > 0:
-            chunk = blocks[start:end]
-            del blocks[start:end]
-            new_pos = max(0, start - 1)
-            blocks[new_pos:new_pos] = chunk
-        elif direction == "down" and end < len(blocks):
-            chunk = blocks[start:end]
-            del blocks[start:end]
-            new_pos = min(len(blocks), start + 1)
-            blocks[new_pos:new_pos] = chunk
-    else:
-        if direction == "up" and idx > 0:
-            blocks[idx - 1], blocks[idx] = blocks[idx], blocks[idx - 1]
-        elif direction == "down" and idx < len(blocks) - 1:
-            blocks[idx + 1], blocks[idx] = blocks[idx], blocks[idx + 1]
-
-
-def delete_folder_with_children(blocks: List[Dict[str, Any]], folder_id: str):
-    i = 0
-    result = []
-    while i < len(blocks):
-        b = blocks[i]
-        if b["id"] == folder_id:
-            i += 1
-            while i < len(blocks) and blocks[i].get("folder_id") == folder_id:
-                i += 1
-        else:
-            result.append(b)
-            i += 1
-    blocks.clear()
-    blocks.extend(result)
-
-
-def remove_block(blocks: List[Dict[str, Any]], block_id: str):
-    idx = get_block_index(blocks, block_id)
-    if idx == -1:
-        return
-    block = blocks[idx]
-    if block["type"] == "folder":
-        delete_folder_with_children(blocks, block_id)
-    else:
-        del blocks[idx]
-
-
-# -----------------------------
-# Supabase CRUD
-# -----------------------------
+# ------------------------------------------------
+# 3. DB 유틸
+# ------------------------------------------------
 def fetch_pages() -> List[Dict[str, Any]]:
+    """사이드바에 쓸 페이지 리스트"""
     resp = (
         supabase.table(TABLE_NAME)
-        .select("id,title,subtitle,order_index")
+        .select("id, title, subtitle, order_index, blocks")
         .order("order_index")
         .execute()
     )
@@ -178,74 +50,69 @@ def fetch_pages() -> List[Dict[str, Any]]:
 
 
 def fetch_page(page_id: str) -> Optional[Dict[str, Any]]:
-    resp = supabase.table(TABLE_NAME).select("*").eq("id", page_id).single().execute()
+    resp = (
+        supabase.table(TABLE_NAME)
+        .select("*")
+        .eq("id", page_id)
+        .single()
+        .execute()
+    )
     return resp.data
 
 
 def insert_page(page: Dict[str, Any]) -> Dict[str, Any]:
-    resp = supabase.table(TABLE_NAME).insert(
-        {
-            "id": page["id"],
-            "title": page["title"],
-            "subtitle": page["subtitle"],
-            "order_index": page["order_index"],
-            "blocks": page["blocks"],
-        }
-    ).execute()
+    resp = supabase.table(TABLE_NAME).insert(page).execute()
     return resp.data[0]
 
 
 def update_page(page: Dict[str, Any]):
-    supabase.table(TABLE_NAME).update(
-        {
-            "title": page["title"],
-            "subtitle": page["subtitle"],
-            "order_index": page["order_index"],
-            "blocks": page["blocks"],
-        }
-    ).eq("id", page["id"]).execute()
+    supabase.table(TABLE_NAME).update(page).eq("id", page["id"]).execute()
 
 
 def delete_page_db(page_id: str):
     supabase.table(TABLE_NAME).delete().eq("id", page_id).execute()
 
 
-# -----------------------------
-# 샘플 페이지
-# -----------------------------
-def create_sample_page() -> Dict[str, Any]:
-    page = new_page("첫 페이지")
-    page["subtitle"] = "memoking 기본 샘플"
-
-    folder = new_folder("샘플 폴더 1")
-    text = new_text_block("제목 1", "여기에 메모를 써보세요.")
-    text["folder_id"] = folder["id"]
-    point = new_point_block("중요 포인트를 적어보세요.")
-    point["folder_id"] = folder["id"]
-
-    page["blocks"] = [folder, text, point]
-    return page
+# ------------------------------------------------
+# 4. 데이터 모델 (심플 버전)
+# ------------------------------------------------
+def new_page(title: str, order_index: int) -> Dict[str, Any]:
+    """blocks 필드는 memo 텍스트만 저장"""
+    return {
+        "id": str(uuid.uuid4()),
+        "title": title,
+        "subtitle": "",
+        "order_index": order_index,
+        "blocks": {"memo": ""},  # 심플 구조
+    }
 
 
-# -----------------------------
-# 세션 상태 & 로딩
-# -----------------------------
+def get_memo_from_page(page: Dict[str, Any]) -> str:
+    blocks = page.get("blocks")
+    if isinstance(blocks, dict) and "memo" in blocks:
+        return blocks["memo"] or ""
+    # 예전 구조일 수도 있으니 방어적으로
+    return ""
+
+
+# ------------------------------------------------
+# 5. 세션 상태
+# ------------------------------------------------
 def init_state():
     st.session_state.setdefault("pages", [])
     st.session_state.setdefault("selected_page_id", None)
     st.session_state.setdefault("current_page", None)
-    st.session_state.setdefault("show_delete_page_prompt", False)
-    st.session_state.setdefault("show_rename_page_prompt", False)
-    st.session_state.setdefault("rename_title_temp", "")
-    st.session_state.setdefault("pending_delete_block_id", None)
-    st.session_state.setdefault("show_delete_block_prompt", False)
+    st.session_state.setdefault("show_delete_prompt", False)
+    st.session_state.setdefault("show_rename_prompt", False)
+    st.session_state.setdefault("rename_temp_title", "")
 
 
-def load_pages_to_state():
+def reload_pages():
     st.session_state["pages"] = fetch_pages()
     if not st.session_state["pages"]:
-        page = create_sample_page()
-        insert_page(page)
+        # 아무 페이지도 없으면 첫 페이지 하나 만들기
+        first = new_page("첫 페이지", 0)
+        insert_page(first)
         st.session_state["pages"] = fetch_pages()
 
     if st.session_state["selected_page_id"] is None:
@@ -257,66 +124,96 @@ def load_current_page():
     if not pid:
         return
     page = fetch_page(pid)
-    if page is None:
-        return
-    page["blocks"] = page.get("blocks") or []
-    st.session_state["current_page"] = page
+    if page:
+        # memo 값만 꺼내서 캐시
+        page["memo"] = get_memo_from_page(page)
+        st.session_state["current_page"] = page
 
 
 def save_current_page():
     page = st.session_state.get("current_page")
-    if page:
-        update_page(page)
-        load_pages_to_state()
+    if not page:
+        return
+    # memo를 blocks에 다시 넣어서 저장
+    page_to_save = {
+        "id": page["id"],
+        "title": page.get("title", ""),
+        "subtitle": page.get("subtitle", ""),
+        "order_index": page.get("order_index", 0),
+        "blocks": {"memo": page.get("memo", "")},
+    }
+    update_page(page_to_save)
+    reload_pages()
 
 
-# -----------------------------
-# 스타일 (사이드바 폭, 버튼 크기, 카드 라인)
-# -----------------------------
+# ------------------------------------------------
+# 6. 기본 스타일 (깔끔한 카드 스타일)
+# ------------------------------------------------
 st.markdown(
     """
 <style>
 body {
     background-color: #d3d7dd;
 }
+
+/* 메인 레이아웃 */
 .memoking-main {
     max-width: 900px;
     margin: 0 auto;
     padding: 1rem;
 }
+
+/* 사이드바 폭 줄이기 */
 [data-testid="stSidebar"] {
-    background-color: #e4e5ea;
-    min-width: 180px;   /* 사이드바 폭 줄이기 */
-    max-width: 220px;
+    background-color: #f2f2f5;
+    min-width: 180px;
+    max-width: 230px;
 }
+
+/* 제목 카드 */
+.title-card {
+    background-color: #ffffff;
+    border-radius: 16px;
+    padding: 10px 14px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+    margin-bottom: 12px;
+}
+
+/* 메모 카드 */
+.memo-card {
+    background-color: #ffffff;
+    border-radius: 20px;
+    padding: 14px 18px;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+}
+
+/* 사이드바 아이콘 버튼 작게 */
 .sidebar-icon-btn button {
-    padding: 0.2rem;
-    font-size: 0.9rem;
-}
-.memo-tool-btn button {
     padding: 0.1rem 0.3rem;
-    font-size: 0.7rem;
+    font-size: 0.85rem;
 }
-.memo-card-inner {
-    border-radius: 12px;
-    padding: 6px 8px;
+
+/* 큰 메모 textarea 글꼴 크기 */
+textarea {
+    font-size: 0.9rem !important;
+    line-height: 1.4 !important;
 }
 </style>
 """,
     unsafe_allow_html=True,
 )
 
-
-# -----------------------------
-# 앱 로직 시작
-# -----------------------------
+# ------------------------------------------------
+# 7. 앱 실행
+# ------------------------------------------------
 init_state()
-load_pages_to_state()
+reload_pages()
+load_current_page()
 
 pages = st.session_state["pages"]
 current_id = st.session_state.get("selected_page_id")
 
-# ===== 사이드바 =====
+# ---------- 사이드바 ----------
 with st.sidebar:
     st.markdown("### memo<br>king", unsafe_allow_html=True)
     st.markdown("---")
@@ -335,8 +232,8 @@ with st.sidebar:
         index=current_index,
         label_visibility="collapsed",
     )
-
     selected_id = page_ids[page_titles.index(selected_title)]
+
     if selected_id != current_id:
         st.session_state["selected_page_id"] = selected_id
         load_current_page()
@@ -344,259 +241,121 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # 아래쪽: 3개의 아이콘 버튼을 가로로
+    # 하단 아이콘 3개 (새 페이지 / 삭제 / 이름변경)
     col_new, col_del, col_edit = st.columns(3)
 
     with col_new:
         st.markdown('<div class="sidebar-icon-btn">', unsafe_allow_html=True)
-        if st.button("➕", key="btn_new_page", use_container_width=True):
+        if st.button("➕", use_container_width=True, key="btn_new_page"):
             max_idx = max((p["order_index"] for p in pages), default=-1)
-            page = new_page(f"새 페이지 {max_idx + 2}")
-            page["order_index"] = max_idx + 1
-            insert_page(page)
-            load_pages_to_state()
-            st.session_state["selected_page_id"] = page["id"]
+            new = new_page(f"새 페이지 {max_idx + 2}", max_idx + 1)
+            insert_page(new)
+            reload_pages()
+            st.session_state["selected_page_id"] = new["id"]
             load_current_page()
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col_del:
         st.markdown('<div class="sidebar-icon-btn">', unsafe_allow_html=True)
-        if st.button("🗑", key="btn_delete_page", use_container_width=True):
-            st.session_state["show_delete_page_prompt"] = True
+        if st.button("🗑", use_container_width=True, key="btn_delete_page"):
+            st.session_state["show_delete_prompt"] = True
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col_edit:
         st.markdown('<div class="sidebar-icon-btn">', unsafe_allow_html=True)
-        if st.button("✏️", key="btn_rename_page", use_container_width=True):
-            st.session_state["show_rename_page_prompt"] = True
+        if st.button("✏️", use_container_width=True, key="btn_rename_page"):
+            st.session_state["show_rename_prompt"] = True
             cur = next(
                 (p for p in pages if p["id"] == st.session_state["selected_page_id"]),
                 None,
             )
-            st.session_state["rename_title_temp"] = cur["title"] if cur else ""
+            st.session_state["rename_temp_title"] = cur["title"] if cur else ""
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # 삭제 확인
-    if st.session_state.get("show_delete_page_prompt", False):
-        st.warning("페이지를 삭제하시겠습니까?")
+    # 삭제 확인 박스
+    if st.session_state.get("show_delete_prompt", False):
+        st.warning("현재 페이지를 삭제하시겠습니까?")
         c1, c2 = st.columns(2)
         with c1:
             if st.button("삭제", key="confirm_delete_page"):
                 pid = st.session_state.get("selected_page_id")
                 if pid:
                     delete_page_db(pid)
-                    load_pages_to_state()
+                    reload_pages()
                     if st.session_state["pages"]:
                         st.session_state["selected_page_id"] = st.session_state["pages"][0]["id"]
                     else:
                         st.session_state["selected_page_id"] = None
-                st.session_state["show_delete_page_prompt"] = False
+                        st.session_state["current_page"] = None
+                st.session_state["show_delete_prompt"] = False
                 st.rerun()
         with c2:
             if st.button("취소", key="cancel_delete_page"):
-                st.session_state["show_delete_page_prompt"] = False
+                st.session_state["show_delete_prompt"] = False
                 st.rerun()
 
-    # 제목 편집
-    if st.session_state.get("show_rename_page_prompt", False):
+    # 이름 변경 박스
+    if st.session_state.get("show_rename_prompt", False):
         st.info("페이지 제목을 수정하세요.")
         new_title = st.text_input(
             "",
-            value=st.session_state.get("rename_title_temp", ""),
-            key="rename_page_input_sidebar",
+            value=st.session_state.get("rename_temp_title", ""),
+            key="rename_page_input",
             label_visibility="collapsed",
         )
         c1, c2 = st.columns(2)
         with c1:
-            if st.button("저장", key="rename_save_btn"):
+            if st.button("저장", key="rename_save"):
                 pid = st.session_state.get("selected_page_id")
-                page_db = fetch_page(pid)
-                if page_db:
-                    page_db["title"] = new_title
-                    update_page(page_db)
-                load_pages_to_state()
-                st.session_state["show_rename_page_prompt"] = False
+                p = fetch_page(pid)
+                if p:
+                    p["title"] = new_title
+                    update_page(p)
+                reload_pages()
+                st.session_state["show_rename_prompt"] = False
                 st.rerun()
         with c2:
-            if st.button("취소", key="rename_cancel_btn"):
-                st.session_state["show_rename_page_prompt"] = False
+            if st.button("취소", key="rename_cancel"):
+                st.session_state["show_rename_prompt"] = False
                 st.rerun()
 
-# 현재 페이지 로딩
-load_current_page()
-page = st.session_state.get("current_page")
-
-# ===== 메인 영역 =====
+# ---------- 메인 영역 ----------
 st.markdown('<div class="memoking-main">', unsafe_allow_html=True)
 
+page = st.session_state.get("current_page")
+
 if not page:
-    st.info("왼쪽 사이드바에서 페이지를 선택하거나 새 페이지를 만들어주세요.")
+    st.info("왼쪽에서 페이지를 선택하거나 새 페이지를 만들어주세요.")
 else:
-    # 상단: 제목 / 부제 (라벨만)
-    st.markdown(
-        f"<div style='font-weight:700;font-size:1.1rem;margin-bottom:2px;'>{page['title']}</div>",
-        unsafe_allow_html=True,
-    )
-    subtitle = page.get("subtitle") or ""
-    if subtitle.strip():
-        st.markdown(
-            f"<div style='color:#666;font-size:0.9rem;margin-bottom:8px;'>{subtitle}</div>",
-            unsafe_allow_html=True,
+    # 상단: 제목 / 부제 (타이틀 카드)
+    with st.container():
+        st.markdown('<div class="title-card">', unsafe_allow_html=True)
+        page["title"] = st.text_input(
+            "제목",
+            value=page["title"],
+            key="title_input",
         )
-    st.markdown("---")
+        page["subtitle"] = st.text_input(
+            "부제 (선택)",
+            value=page.get("subtitle", ""),
+            key="subtitle_input",
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    blocks: List[Dict[str, Any]] = page["blocks"]
-
-    # 카드 렌더링 함수
-    def render_block(block: Dict[str, Any]):
-        btype = block["type"]
-        level = block.get("bg_level", 1)
-        color = bg_color(level)
-
-        with st.container(border=True):
-            # 카드 배경
-            st.markdown(
-                f"<div class='memo-card-inner' style='background-color:{color};'>",
-                unsafe_allow_html=True,
-            )
-
-            # 상단: 제목 라벨 + 작은 아이콘 버튼 4개 (가로)
-            h1, h2, h3, h4, h5 = st.columns([7, 1, 1, 1, 1])
-
-            with h1:
-                if btype == "folder":
-                    label = block.get("title", "폴더")
-                elif btype == "text":
-                    label = block.get("title", "텍스트 카드")
-                else:
-                    label = "포인트 카드"
-                st.markdown(
-                    f"<div style='font-size:12px;font-weight:600;'>{label}</div>",
-                    unsafe_allow_html=True,
-                )
-
-            # 각 버튼은 memo-tool-btn 클래스로 작게
-            with h2:
-                st.markdown('<div class="memo-tool-btn">', unsafe_allow_html=True)
-                if st.button("↑", key=f"up_{block['id']}"):
-                    move_block(blocks, block["id"], "up")
-                    save_current_page()
-                    st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
-
-            with h3:
-                st.markdown('<div class="memo-tool-btn">', unsafe_allow_html=True)
-                if st.button("↓", key=f"down_{block['id']}"):
-                    move_block(blocks, block["id"], "down")
-                    save_current_page()
-                    st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
-
-            with h4:
-                st.markdown('<div class="memo-tool-btn">', unsafe_allow_html=True)
-                if st.button("🎨", key=f"bg_{block['id']}"):
-                    toggle_bg(block)
-                    save_current_page()
-                    st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
-
-            with h5:
-                st.markdown('<div class="memo-tool-btn">', unsafe_allow_html=True)
-                if st.button("🗑", key=f"del_{block['id']}"):
-                    st.session_state["pending_delete_block_id"] = block["id"]
-                    st.session_state["show_delete_block_prompt"] = True
-                st.markdown("</div>", unsafe_allow_html=True)
-
-            # 본문 입력 영역 (라벨 숨김)
-            if btype == "folder":
-                block["title"] = st.text_input(
-                    "",
-                    value=block.get("title", ""),
-                    key=f"folder_title_{block['id']}",
-                    label_visibility="collapsed",
-                )
-            elif btype == "text":
-                block["title"] = st.text_input(
-                    "",
-                    value=block.get("title", ""),
-                    key=f"text_title_{block['id']}",
-                    label_visibility="collapsed",
-                )
-                block["content"] = st.text_area(
-                    "",
-                    value=block.get("content", ""),
-                    key=f"text_content_{block['id']}",
-                    height=120,
-                    label_visibility="collapsed",
-                )
-            elif btype == "point":
-                block["content"] = st.text_input(
-                    "",
-                    value=block.get("content", ""),
-                    key=f"point_content_{block['id']}",
-                    label_visibility="collapsed",
-                )
-
-            st.markdown("</div>", unsafe_allow_html=True)
-
-    # 폴더 + 자식 구조대로 렌더링
-    i = 0
-    while i < len(blocks):
-        b = blocks[i]
-        if b["type"] == "folder":
-            render_block(b)
-            folder_id = b["id"]
-            i += 1
-            while i < len(blocks) and blocks[i].get("folder_id") == folder_id:
-                render_block(blocks[i])
-                i += 1
-        else:
-            render_block(b)
-            i += 1
-
-    st.markdown("---")
-
-    # 카드 추가 버튼들
-    st.markdown("#### 카드 추가")
-    add_col1, add_col2, add_col3 = st.columns(3)
-    with add_col1:
-        if st.button("＋ 폴더", use_container_width=True):
-            folder = new_folder()
-            blocks.append(folder)
+    # 메모 카드
+    with st.container():
+        st.markdown('<div class="memo-card">', unsafe_allow_html=True)
+        page["memo"] = st.text_area(
+            "메모",
+            value=page.get("memo", ""),
+            key="memo_textarea",
+            height=450,
+        )
+        if st.button("저장", type="primary", key="save_memo_btn"):
+            st.session_state["current_page"] = page
             save_current_page()
-            st.rerun()
-    with add_col2:
-        if st.button("＋ 텍스트 카드", use_container_width=True):
-            text_b = new_text_block()
-            blocks.append(text_b)
-            save_current_page()
-            st.rerun()
-    with add_col3:
-        if st.button("＋ 포인트 카드", use_container_width=True):
-            point_b = new_point_block()
-            blocks.append(point_b)
-            save_current_page()
-            st.rerun()
+            st.success("저장되었습니다.")
+        st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown("</div>", unsafe_allow_html=True)
-
-# ===== 블록 삭제 확인 (본문 아래) =====
-if st.session_state.get("show_delete_block_prompt", False):
-    st.warning("이 카드(또는 폴더)를 삭제하시겠습니까?")
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("카드 삭제 확인", key="confirm_block_delete"):
-            page_cur = st.session_state.get("current_page")
-            block_id = st.session_state.get("pending_delete_block_id")
-            if page_cur and block_id:
-                remove_block(page_cur["blocks"], block_id)
-                save_current_page()
-            st.session_state["pending_delete_block_id"] = None
-            st.session_state["show_delete_block_prompt"] = False
-            st.rerun()
-    with c2:
-        if st.button("취소", key="cancel_block_delete"):
-            st.session_state["pending_delete_block_id"] = None
-            st.session_state["show_delete_block_prompt"] = False
-            st.rerun()
