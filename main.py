@@ -147,13 +147,13 @@ def save_current_page():
 
 
 # ------------------------------------------------
-# 6. 기본 스타일 (깔끔한 카드 스타일)
+# 6. 스타일 (톤 통일 + 깔끔한 사이드바/에디터)
 # ------------------------------------------------
 st.markdown(
     """
 <style>
 body {
-    background-color: #d3d7dd;
+    background-color: #d8dae2;
 }
 
 /* 메인 레이아웃 */
@@ -163,40 +163,76 @@ body {
     padding: 1rem;
 }
 
-/* 사이드바 폭 줄이기 */
+/* 사이드바 배경을 본문과 살짝 다르게 */
 [data-testid="stSidebar"] {
-    background-color: #f2f2f5;
+    background-color: #ececf3;
     min-width: 180px;
     max-width: 230px;
+    border-right: 1px solid #d0d2dd;
+}
+
+/* 사이드바 제목 */
+.sidebar-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+/* 사이드바 라디오 리스트를 카드형으로 */
+[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label {
+    display: block;
+    padding: 5px 9px;
+    border-radius: 10px;
+    margin-bottom: 4px;
+    background-color: rgba(255,255,255,0.6);
+    border: 1px solid transparent;
+    font-size: 0.86rem;
+}
+
+/* 라디오 동그라미 숨기기 */
+[data-testid="stSidebar"] input[type="radio"] {
+    display: none;
+}
+
+/* 사이드바 아이콘 버튼 더 작게 */
+.sidebar-icon-btn button {
+    padding: 0.05rem 0.25rem;
+    font-size: 0.75rem;
 }
 
 /* 제목 카드 */
 .title-card {
-    background-color: #ffffff;
+    background-color: #f6f6fb;
     border-radius: 16px;
     padding: 10px 14px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.04);
     margin-bottom: 12px;
 }
 
 /* 메모 카드 */
 .memo-card {
-    background-color: #ffffff;
+    background-color: #f6f6fb;
     border-radius: 20px;
-    padding: 14px 18px;
-    box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+    padding: 12px 16px;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.05);
 }
 
-/* 사이드바 아이콘 버튼 작게 */
-.sidebar-icon-btn button {
-    padding: 0.1rem 0.3rem;
-    font-size: 0.85rem;
+/* Text input / textarea 배경을 카드와 동일하게 */
+.stTextInput input, .stTextArea textarea {
+    background-color: #f6f6fb !important;
+    border-radius: 10px !important;
+    border: 1px solid #d4d6e2 !important;
 }
 
-/* 큰 메모 textarea 글꼴 크기 */
-textarea {
+/* 입력 폰트 조금 부드럽게 */
+.stTextInput input, .stTextArea textarea {
     font-size: 0.9rem !important;
     line-height: 1.4 !important;
+}
+
+/* text_area 높이 조정 */
+textarea {
+    min-height: 320px;
 }
 </style>
 """,
@@ -215,7 +251,7 @@ current_id = st.session_state.get("selected_page_id")
 
 # ---------- 사이드바 ----------
 with st.sidebar:
-    st.markdown("### memo<br>king", unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-title">memo<br>king</div>', unsafe_allow_html=True)
     st.markdown("---")
 
     page_ids = [p["id"] for p in pages]
@@ -332,14 +368,18 @@ else:
     with st.container():
         st.markdown('<div class="title-card">', unsafe_allow_html=True)
         page["title"] = st.text_input(
-            "제목",
+            "",
             value=page["title"],
             key="title_input",
+            label_visibility="collapsed",
+            placeholder="제목",
         )
         page["subtitle"] = st.text_input(
-            "부제 (선택)",
+            "",
             value=page.get("subtitle", ""),
             key="subtitle_input",
+            label_visibility="collapsed",
+            placeholder="부제 (선택)",
         )
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -347,10 +387,11 @@ else:
     with st.container():
         st.markdown('<div class="memo-card">', unsafe_allow_html=True)
         page["memo"] = st.text_area(
-            "메모",
+            "",
             value=page.get("memo", ""),
             key="memo_textarea",
-            height=450,
+            label_visibility="collapsed",
+            placeholder="여기에 메모를 작성하세요",
         )
         if st.button("저장", type="primary", key="save_memo_btn"):
             st.session_state["current_page"] = page
