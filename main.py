@@ -139,12 +139,13 @@ st.markdown(
     color: #222 !important;
 }
 
-/* 카드 제목은 볼드체 */
+/* 카드 제목 인풋은 한 줄 텍스트 느낌 + 볼드 */
 .stTextInput input {
     font-weight: 700 !important;
+    font-size: 0.95rem !important;
 }
 
-/* textarea 높이 */
+/* 내용 textarea 높이 */
 .stTextArea textarea {
     min-height: 110px !important;
     font-size: 0.95rem !important;
@@ -157,7 +158,13 @@ st.markdown(
     border-radius: 8px !important;
 }
 
-/* 구분선 간격 */
+/* Expander 헤더 텍스트 볼드 */
+details > summary {
+    font-weight: 700 !important;
+    color: #222 !important;
+}
+
+/* 구분선 간격 (위아래 여백 최소화) */
 hr {
     margin-top: 0.45rem !important;
     margin-bottom: 0.45rem !important;
@@ -170,12 +177,8 @@ hr {
 # ---------------------------
 # 세션 상태 기본값
 # ---------------------------
-if "card_toolbar" not in st.session_state:
-    st.session_state["card_toolbar"] = "-"
 if "card_toolbar_last" not in st.session_state:
     st.session_state["card_toolbar_last"] = "-"
-if "page_toolbar" not in st.session_state:
-    st.session_state["page_toolbar"] = "-"
 if "page_toolbar_last" not in st.session_state:
     st.session_state["page_toolbar_last"] = "-"
 if "renaming_page" not in st.session_state:
@@ -207,7 +210,7 @@ with st.sidebar:
     ):
         current_index = page_ids.index(st.session_state["current_page_id"])
 
-    # 페이지 리스트
+    # 페이지 리스트 (이전 스타일)
     choice = option_menu(
         "",
         page_titles,
@@ -243,7 +246,7 @@ with st.sidebar:
         horizontal=True,
         label_visibility="collapsed",
     )
-    page_action = st.session_state["page_toolbar"]
+    page_action = st.session_state.get("page_toolbar", "-")
 
     # 페이지 추가
     if page_action == "➕" and st.session_state["page_toolbar_last"] != "➕":
@@ -324,14 +327,15 @@ st.radio(
     horizontal=True,
     label_visibility="collapsed",
 )
-card_action = st.session_state["card_toolbar"]
+card_action = st.session_state.get("card_toolbar", "-")
 
 # ---------------------------
-# 카드 렌더링 (제목 = expander 헤더, 내부에 제목/내용 컴포넌트)
+# 카드 렌더링 (Expander: 제목 = 헤더, 내부에 제목/내용)
 # ---------------------------
 for card_id, title, content in cards:
     header = title if title else "제목 없음"
     with st.expander(header, expanded=True):
+        # 제목 편집용 텍스트 필드 (티 덜 나게 스타일링되어 있음)
         st.text_input(
             "",
             value=title,
@@ -340,6 +344,7 @@ for card_id, title, content in cards:
             placeholder="제목 입력",
         )
 
+        # 내용
         st.text_area(
             "",
             value=content,
@@ -349,7 +354,7 @@ for card_id, title, content in cards:
             placeholder="내용을 입력하세요",
         )
 
-    st.markdown("---")
+    # 카드 사이 separator는 더 이상 넣지 않음
 
 # ---------------------------
 # 카드 툴바 동작 처리
