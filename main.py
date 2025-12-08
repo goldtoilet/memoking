@@ -109,7 +109,13 @@ def extract_cards_from_blocks(page: Dict[str, Any]) -> List[Dict[str, Any]]:
                 }
             ]
 
-    # 최소 1개는 존재하도록
+    # 내용이 전혀 없는 카드(제목, 내용 둘 다 빈 것)는 보여주지 않기
+    cards = [
+        c for c in cards
+        if (c.get("title") or c.get("content"))
+    ]
+
+    # 그래도 없으면 한 개 생성
     if not cards:
         cards = [
             {
@@ -151,7 +157,6 @@ def load_current_page():
         return
     page = fetch_page(pid)
     if page:
-        # blocks -> cards 로 변환해서 붙여놓기
         page["cards"] = extract_cards_from_blocks(page)
         st.session_state["current_page"] = page
 
@@ -173,7 +178,7 @@ def save_current_page():
 
 
 # ------------------------------------------------
-# 6. 스타일 (배경/에디터 색 일치 + 카드 스타일)
+# 6. 스타일 (배경/에디터 색, 카드, 버튼)
 # ------------------------------------------------
 st.markdown(
     """
@@ -242,10 +247,10 @@ html, body, [class^="css"], .stMarkdown, .stTextInput, .stTextArea {
     font-size: 0.75rem;
 }
 
-/* 입력·에디터 배경을 전체 배경과 동일하게 */
+/* 입력·에디터 배경을 흰색으로 */
 .stTextInput input,
 .stTextArea textarea {
-    background-color: var(--memoking-bg) !important;
+    background-color: #ffffff !important;
     border-radius: 10px !important;
     border: 1px solid #c1c4d0 !important;
     color: var(--memoking-text) !important;
@@ -256,16 +261,16 @@ html, body, [class^="css"], .stMarkdown, .stTextInput, .stTextArea {
     font-weight: 700 !important;
 }
 
-/* textarea 기본 높이 (카드당 1/3 정도) */
+/* textarea 기본 높이 (카드당 약 1/3 화면) */
 .stTextArea textarea {
     min-height: 120px;
     font-size: 0.9rem !important;
     line-height: 1.4 !important;
 }
 
-/* 카드 스타일: 배경색은 윈도우와 같지만 테두리+그림자로 구분 */
+/* 카드 스타일: 살짝 다른 톤의 배경 + 테두리 + 그림자 */
 .memo-card {
-    background-color: var(--memoking-bg);
+    background-color: #f4f5fb;
     border-radius: 18px;
     padding: 10px 12px;
     border: 1px solid #c1c4d0;
@@ -401,22 +406,17 @@ page = st.session_state.get("current_page")
 if not page:
     st.info("왼쪽에서 페이지를 선택하거나 새 페이지를 만들어주세요.")
 else:
-    # 페이지 제목 (볼드)
-    page["title"] = st.text_input(
-        "",
-        value=page["title"],
-        key="title_input",
-        label_visibility="collapsed",
-        placeholder="제목",
+    # 1) 페이지 제목: 라벨(텍스트)만, 굵게
+    st.markdown(
+        f"<div style='font-size:1.0rem;font-weight:700;margin-bottom:6px;'>{page['title']}</div>",
+        unsafe_allow_html=True,
     )
-
-    st.write("")  # 작은 간격
 
     cards: List[Dict[str, Any]] = page.get("cards", [])
     if not cards:
         cards.append({"id": str(uuid.uuid4()), "title": "", "content": ""})
 
-    # 카드들 렌더링
+    # 2) 카드들 렌더링
     for idx, card in enumerate(cards):
         with st.container():
             st.markdown('<div class="memo-card">', unsafe_allow_html=True)
@@ -444,8 +444,11 @@ else:
     page["cards"] = cards
     st.session_state["current_page"] = page
 
-    # 버튼 줄: 저장 / 카드 추가 / 카드 삭제
-    b1, b2, b3 = st.columns([2, 1, 1])
+    # 3) 카드 영역과 버튼 영역 사이에 항상 separator
+    st.markdown("---")
+
+    # 4) 버튼 줄: 저장 / 카드 추가 / 카드 삭제 (가로 3개)
+    b1, b2, b3 = st.columns(3)
 
     with b1:
         if st.button("저장", type="primary", key="save_cards_btn"):
