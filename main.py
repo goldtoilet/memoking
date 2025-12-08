@@ -165,7 +165,21 @@ def save_current_page():
     page = st.session_state.get("current_page")
     if not page:
         return
-    cards = page.get("cards", [])
+
+    # 저장 전에 빈 카드 제거
+    cards = [
+        c for c in page.get("cards", [])
+        if (c.get("title") or c.get("content"))
+    ]
+    if not cards:
+        cards = [
+            {
+                "id": str(uuid.uuid4()),
+                "title": "",
+                "content": "",
+            }
+        ]
+
     page_to_save = {
         "id": page["id"],
         "title": page.get("title", ""),
@@ -178,7 +192,7 @@ def save_current_page():
 
 
 # ------------------------------------------------
-# 6. 스타일 (배경/에디터 색, 카드, 버튼)
+# 6. 스타일 (배경/에디터 색, 카드, 버튼, 여백)
 # ------------------------------------------------
 st.markdown(
     """
@@ -211,15 +225,15 @@ html, body, [class^="css"], .stMarkdown, .stTextInput, .stTextArea {
     padding: 1rem;
 }
 
-/* 사이드바 배경 */
+/* 사이드바 배경 + 폭 더 넓게 */
 [data-testid="stSidebar"] {
     background-color: #e7e9f0;
-    min-width: 170px;
-    max-width: 220px;
+    min-width: 220px;
+    max-width: 270px;
     border-right: 1px solid #c1c4d0;
 }
 
-/* 사이드바 제목을 조금 더 크게, 굵게 */
+/* 사이드바 제목 */
 .sidebar-title {
     font-size: 1.5rem;
     font-weight: 800;
@@ -268,13 +282,42 @@ html, body, [class^="css"], .stMarkdown, .stTextInput, .stTextArea {
     line-height: 1.4 !important;
 }
 
-/* 카드 스타일: 살짝 다른 톤의 배경 + 테두리 + 그림자 */
+/* 카드 스타일 */
 .memo-card {
     background-color: #f4f5fb;
     border-radius: 18px;
     padding: 10px 12px;
     border: 1px solid #c1c4d0;
     box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+/* hr(---) 여백 줄이기 */
+hr {
+    margin: 0.3rem 0 0.5rem 0;
+}
+
+/* 페이지 제목 스타일 */
+.page-title {
+    font-size: 1.15rem;
+    font-weight: 750;
+    margin-bottom: 0.15rem;
+}
+
+/* 버튼 줄: 가로 정렬 */
+.button-row {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.button-row .stButton {
+    margin: 0;
+}
+
+.button-row .stButton button {
+    padding: 0.3rem 0.8rem;
+    font-size: 0.85rem;
 }
 </style>
 """,
@@ -406,15 +449,20 @@ page = st.session_state.get("current_page")
 if not page:
     st.info("왼쪽에서 페이지를 선택하거나 새 페이지를 만들어주세요.")
 else:
-    # 1) 페이지 제목: 라벨(텍스트)만, 굵게
+    # 카드 리스트 준비: 빈 카드 제거
+    cards: List[Dict[str, Any]] = page.get("cards", [])
+    cards = [c for c in cards if (c.get("title") or c.get("content"))]
+    if not cards:
+        cards = [{"id": str(uuid.uuid4()), "title": "", "content": ""}]
+    page["cards"] = cards
+    st.session_state["current_page"] = page
+
+    # 1) 페이지 제목 (조금 더 크게) + separator
     st.markdown(
-        f"<div style='font-size:1.0rem;font-weight:700;margin-bottom:6px;'>{page['title']}</div>",
+        f"<div class='page-title'>{page['title']}</div>",
         unsafe_allow_html=True,
     )
-
-    cards: List[Dict[str, Any]] = page.get("cards", [])
-    if not cards:
-        cards.append({"id": str(uuid.uuid4()), "title": "", "content": ""})
+    st.markdown("---")
 
     # 2) 카드들 렌더링
     for idx, card in enumerate(cards):
@@ -439,47 +487,47 @@ else:
 
             st.markdown("</div>", unsafe_allow_html=True)
 
-        st.write("")  # 카드 간 간격
+        # 카드 간 간격을 최소화하고 separator 추가
+        st.markdown("---")
 
+    # 최신 카드 상태 저장
     page["cards"] = cards
     st.session_state["current_page"] = page
 
-    # 3) 카드 영역과 버튼 영역 사이에 항상 separator
-    st.markdown("---")
+    # 3) 버튼 줄: 저장 / 카드 추가 / 카드 삭제 (가로)
+    st.markdown('<div class="button-row">', unsafe_allow_html=True)
+    save_clicked = st.button("저장", type="primary", key="save_cards_btn")
+    add_clicked = st.button("＋ 카드", key="add_card_btn")
+    del_clicked = st.button("🗑 카드", key="delete_card_btn")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    # 4) 버튼 줄: 저장 / 카드 추가 / 카드 삭제 (가로 3개)
-    b1, b2, b3 = st.columns(3)
+    # 버튼 동작 처리
+    if save_clicked:
+        save_current_page()
+        st.success("저장되었습니다.")
 
-    with b1:
-        if st.button("저장", type="primary", key="save_cards_btn"):
-            save_current_page()
-            st.success("저장되었습니다.")
+    if add_clicked:
+        cards.append(
+            {
+                "id": str(uuid.uuid4()),
+                "title": "",
+                "content": "",
+            }
+        )
+        page["cards"] = cards
+        st.session_state["current_page"] = page
+        save_current_page()
+        st.rerun()
 
-    with b2:
-        if st.button("＋ 카드", key="add_card_btn"):
-            cards.append(
-                {
-                    "id": str(uuid.uuid4()),
-                    "title": "",
-                    "content": "",
-                }
-            )
-            page["cards"] = cards
-            st.session_state["current_page"] = page
-            save_current_page()
-            st.rerun()
-
-    with b3:
-        if st.button("🗑 카드", key="delete_card_btn"):
-            if len(cards) > 1:
-                cards.pop()  # 마지막 카드 삭제
-            else:
-                # 카드가 1개만 있으면 내용만 비우기
-                cards[0]["title"] = ""
-                cards[0]["content"] = ""
-            page["cards"] = cards
-            st.session_state["current_page"] = page
-            save_current_page()
-            st.rerun()
+    if del_clicked:
+        if len(cards) > 1:
+            cards.pop()  # 마지막 카드 삭제
+        else:
+            cards[0]["title"] = ""
+            cards[0]["content"] = ""
+        page["cards"] = cards
+        st.session_state["current_page"] = page
+        save_current_page()
+        st.rerun()
 
 st.markdown("</div>", unsafe_allow_html=True)
