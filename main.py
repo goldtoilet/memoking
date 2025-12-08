@@ -5,16 +5,17 @@ from streamlit_option_menu import option_menu
 st.set_page_config(page_title="MemoKing", layout="wide")
 
 # ============================================================
-# 간단 로그인 설정 (원하면 ID/PW 여기서 바꿔 쓰면 됨)
+# 로그인 정보: secrets.toml에서 불러오기
 # ============================================================
-VALID_ID = "memo"
-VALID_PW = "1234"
+VALID_ID = st.secrets["auth"]["id"]
+VALID_PW = st.secrets["auth"]["pw"]
 
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
 
+
 def login_view():
-    st.title("MemoKing 로그인")
+    st.title("🔒 MemoKing 로그인")
     st.write("아이디와 비밀번호를 입력하세요.")
 
     user_id = st.text_input("아이디", key="login_id")
@@ -28,10 +29,12 @@ def login_view():
         else:
             st.error("아이디 또는 비밀번호가 올바르지 않습니다.")
 
+
 # 로그인 안 되어 있으면 여기서 종료
 if not st.session_state["logged_in"]:
     login_view()
     st.stop()
+
 
 # ============================================================
 # DB 초기화 (SQLite)
