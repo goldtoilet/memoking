@@ -4,9 +4,38 @@ from streamlit_option_menu import option_menu
 
 st.set_page_config(page_title="MemoKing", layout="wide")
 
-# ---------------------------
+# ============================================================
+# 간단 로그인 설정 (원하면 ID/PW 여기서 바꿔 쓰면 됨)
+# ============================================================
+VALID_ID = "memo"
+VALID_PW = "1234"
+
+if "logged_in" not in st.session_state:
+    st.session_state["logged_in"] = False
+
+def login_view():
+    st.title("MemoKing 로그인")
+    st.write("아이디와 비밀번호를 입력하세요.")
+
+    user_id = st.text_input("아이디", key="login_id")
+    user_pw = st.text_input("비밀번호", type="password", key="login_pw")
+
+    if st.button("로그인"):
+        if user_id == VALID_ID and user_pw == VALID_PW:
+            st.session_state["logged_in"] = True
+            st.success("로그인 성공!")
+            st.rerun()
+        else:
+            st.error("아이디 또는 비밀번호가 올바르지 않습니다.")
+
+# 로그인 안 되어 있으면 여기서 종료
+if not st.session_state["logged_in"]:
+    login_view()
+    st.stop()
+
+# ============================================================
 # DB 초기화 (SQLite)
-# ---------------------------
+# ============================================================
 def init_db():
     conn = sqlite3.connect("memo.db")
     cur = conn.cursor()
@@ -38,9 +67,9 @@ def init_db():
 
 db = init_db()
 
-# ---------------------------
+# ============================================================
 # PAGE / CARD 함수
-# ---------------------------
+# ============================================================
 def get_pages():
     cur = db.cursor()
     cur.execute("SELECT id, title FROM pages ORDER BY id ASC")
@@ -110,9 +139,9 @@ def delete_card_by_title(page_id: int, title: str):
     return False
 
 
-# ---------------------------
+# ============================================================
 # 공통 스타일 (CSS)
-# ---------------------------
+# ============================================================
 st.markdown(
     """
 <style>
@@ -139,9 +168,9 @@ st.markdown(
     color: #222 !important;
 }
 
-/* 카드 제목 인풋은 한 줄 텍스트 느낌 + 볼드 */
+/* 카드 제목 인풋은 일반체(헤더만 Bold) */
 .stTextInput input {
-    font-weight: 700 !important;
+    font-weight: 400 !important;
     font-size: 0.95rem !important;
 }
 
@@ -174,9 +203,9 @@ hr {
     unsafe_allow_html=True,
 )
 
-# ---------------------------
-# 세션 상태 기본값
-# ---------------------------
+# ============================================================
+# 세션 상태 기본값 + page_toolbar 리셋 플래그
+# ============================================================
 if "card_toolbar_last" not in st.session_state:
     st.session_state["card_toolbar_last"] = "-"
 if "page_toolbar_last" not in st.session_state:
@@ -187,12 +216,23 @@ if "rename_temp" not in st.session_state:
     st.session_state["rename_temp"] = ""
 if "confirm_delete_page" not in st.session_state:
     st.session_state["confirm_delete_page"] = False
+if "reset_page_toolbar" not in st.session_state:
+    st.session_state["reset_page_toolbar"] = False
 
-# ---------------------------
-# 사이드바 : option_menu + 페이지 툴바 (radio)
-# ---------------------------
+# 이전 러닝에서 리셋 플래그가 설정돼 있으면
+# radio 생성 전에 page_toolbar 값을 "-"로 초기화
+if st.session_state.get("reset_page_toolbar", False):
+    st.session_state["page_toolbar"] = "-"
+    st.session_state["reset_page_toolbar"] = False
+
+# ============================================================
+# 사이드바 : option_menu + 페이지 툴바 (radio) + 로그아웃
+# ============================================================
 with st.sidebar:
     st.markdown("### memo king")
+    if st.button("로그아웃"):
+        st.session_state["logged_in"] = False
+        st.rerun()
 
     pages = get_pages()
     if not pages:
@@ -279,12 +319,12 @@ with st.sidebar:
             if st.button("삭제", key="confirm_page_delete"):
                 delete_page(current_page_id)
                 st.session_state["confirm_delete_page"] = False
-                st.session_state["page_toolbar"] = "-"
+                st.session_state["reset_page_toolbar"] = True
                 st.rerun()
         with c2:
             if st.button("취소", key="cancel_page_delete"):
                 st.session_state["confirm_delete_page"] = False
-                st.session_state["page_toolbar"] = "-"
+                st.session_state["reset_page_toolbar"] = True
                 st.rerun()
 
     # 페이지 이름 변경 UI
@@ -299,17 +339,17 @@ with st.sidebar:
             if st.button("이름 변경", key="rename_save"):
                 rename_page(current_page_id, new_title.strip() or "제목 없음")
                 st.session_state["renaming_page"] = False
-                st.session_state["page_toolbar"] = "-"
+                st.session_state["reset_page_toolbar"] = True
                 st.rerun()
         with c2:
             if st.button("취소", key="rename_cancel"):
                 st.session_state["renaming_page"] = False
-                st.session_state["page_toolbar"] = "-"
+                st.session_state["reset_page_toolbar"] = True
                 st.rerun()
 
-# ---------------------------
+# ============================================================
 # 본문 상단 : 페이지 제목 + 카드 툴바(radio)
-# ---------------------------
+# ============================================================
 st.markdown(f"## {choice}")
 st.markdown("---")
 
@@ -329,13 +369,13 @@ st.radio(
 )
 card_action = st.session_state.get("card_toolbar", "-")
 
-# ---------------------------
+# ============================================================
 # 카드 렌더링 (Expander: 제목 = 헤더, 내부에 제목/내용)
-# ---------------------------
+#  - 항상 닫힌 상태(expanded=False)에서 시작
+# ============================================================
 for card_id, title, content in cards:
     header = title if title else "제목 없음"
-    with st.expander(header, expanded=True):
-        # 제목 편집용 텍스트 필드 (티 덜 나게 스타일링되어 있음)
+    with st.expander(header, expanded=False):  # 기본 닫힌 상태
         st.text_input(
             "",
             value=title,
@@ -344,7 +384,6 @@ for card_id, title, content in cards:
             placeholder="제목 입력",
         )
 
-        # 내용
         st.text_area(
             "",
             value=content,
@@ -354,11 +393,9 @@ for card_id, title, content in cards:
             placeholder="내용을 입력하세요",
         )
 
-    # 카드 사이 separator는 더 이상 넣지 않음
-
-# ---------------------------
+# ============================================================
 # 카드 툴바 동작 처리
-# ---------------------------
+# ============================================================
 # 1) 전체 저장 (한 번만 실행)
 if card_action == "💾 저장" and st.session_state["card_toolbar_last"] != "💾 저장":
     for card_id, title, content in cards:
