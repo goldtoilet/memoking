@@ -90,7 +90,7 @@ def delete_card(card_id):
 
 
 # ---------------------------
-# 공통 스타일 (배경/입력필드/버튼)
+# 공통 스타일
 # ---------------------------
 st.markdown(
     """
@@ -100,12 +100,12 @@ st.markdown(
     background-color: #f4f5f7;
 }
 
-/* 라벨 영역 숨기기 - 위쪽 쓸모없는 공간 제거 */
+/* 라벨 숨기기 */
 .stTextInput label, .stTextArea label {
     display: none !important;
 }
 
-/* 입력/에디터 배경을 전체 배경과 같게 */
+/* 입력/에디터 스타일 */
 .stTextInput input, .stTextArea textarea {
     background-color: #f4f5f7 !important;
     border-radius: 10px !important;
@@ -118,16 +118,38 @@ st.markdown(
     font-weight: 700 !important;
 }
 
-/* textarea 높이 조금 줄이기 */
+/* textarea 높이 줄이기 */
 .stTextArea textarea {
     min-height: 110px !important;
     font-size: 0.95rem !important;
 }
 
-/* 기본 버튼 조금 작게 */
+/* 버튼 조금 작게 */
 .stButton button {
     padding: 0.35rem 0.8rem;
     font-size: 0.85rem;
+}
+
+/* ▼▼ 버튼 row 전용: columns가 모바일에서도 가로로 유지되도록 강제 ▼▼ */
+
+/* 버튼 row 감싸는 래퍼 안에서만 column/horizontalBlock 강제 오버라이드 */
+.btn-row-wrapper [data-testid="stHorizontalBlock"] {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 0.25rem !important;
+}
+
+.btn-row-wrapper [data-testid="column"] {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    padding: 0 !important;
+}
+
+/* 버튼 col 안의 버튼들이 가로로 왼쪽 정렬되도록 */
+.btn-row-wrapper [data-testid="stButton"] {
+    display: flex !important;
+    justify-content: flex-start !important;
 }
 </style>
 """,
@@ -142,7 +164,7 @@ if "rename_temp" not in st.session_state:
 
 
 # ---------------------------
-# 사이드바 (Notion Navigation Style)
+# 사이드바
 # ---------------------------
 with st.sidebar:
 
@@ -191,7 +213,8 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # 사이드바 하단 버튼 3개 – columns 로 가로 배치
+    # ▼ 사이드바 하단 버튼 3개: btn-row-wrapper 로 감싸서 가로 고정
+    st.markdown('<div class="btn-row-wrapper">', unsafe_allow_html=True)
     colA, colB, colC = st.columns(3)
     with colA:
         add_page_clicked = st.button("➕", help="페이지 추가", key="btn_add_page")
@@ -199,6 +222,7 @@ with st.sidebar:
         delete_page_clicked = st.button("🗑", help="페이지 삭제", key="btn_del_page")
     with colC:
         rename_page_clicked = st.button("✏️", help="페이지 이름 변경", key="btn_rename_page")
+    st.markdown('</div>', unsafe_allow_html=True)
 
     if add_page_clicked:
         add_page("새 페이지")
@@ -271,7 +295,8 @@ for idx, card in enumerate(cards):
         placeholder="내용을 입력하세요",
     )
 
-    # 카드 아래 버튼 3개 – columns 로 가로 배치
+    # ▼ 카드 아래 버튼 3개: btn-row-wrapper 로 감싸서 가로 고정
+    st.markdown('<div class="btn-row-wrapper">', unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
     with col1:
         save_clicked = st.button("💾 저장", key=f"save_{card_id}")
@@ -279,6 +304,7 @@ for idx, card in enumerate(cards):
         add_clicked = st.button("＋ 추가", key=f"add_{card_id}")
     with col3:
         delete_clicked = st.button("🗑 삭제", key=f"delete_{card_id}")
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # 카드와 다음 카드 사이 구분선
     st.markdown("---")
