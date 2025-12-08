@@ -171,20 +171,22 @@ hr {
 # 세션 상태 기본값
 # ---------------------------
 if "card_toolbar" not in st.session_state:
-    st.session_state["card_toolbar"] = "-"  # 카드 툴바 라디오 값
+    st.session_state["card_toolbar"] = "-"
 if "card_toolbar_last" not in st.session_state:
     st.session_state["card_toolbar_last"] = "-"
 if "page_toolbar" not in st.session_state:
-    st.session_state["page_toolbar"] = "-"  # 페이지 툴바 라디오 값
+    st.session_state["page_toolbar"] = "-"
 if "page_toolbar_last" not in st.session_state:
     st.session_state["page_toolbar_last"] = "-"
 if "renaming_page" not in st.session_state:
     st.session_state["renaming_page"] = False
 if "rename_temp" not in st.session_state:
     st.session_state["rename_temp"] = ""
+if "confirm_delete_page" not in st.session_state:
+    st.session_state["confirm_delete_page"] = False
 
 # ---------------------------
-# 사이드바 : 이전 스타일(option_menu) + 페이지 툴바(radio)
+# 사이드바 : option_menu + 페이지 툴바 (radio)
 # ---------------------------
 with st.sidebar:
     st.markdown("### memo king")
@@ -205,7 +207,7 @@ with st.sidebar:
     ):
         current_index = page_ids.index(st.session_state["current_page_id"])
 
-    # 이전에 쓰던 option_menu 스타일
+    # 페이지 리스트
     choice = option_menu(
         "",
         page_titles,
@@ -243,24 +245,46 @@ with st.sidebar:
     )
     page_action = st.session_state["page_toolbar"]
 
-    # ➕ / 🗑 은 한 번만 실행되도록 last 값 비교
+    # 페이지 추가
     if page_action == "➕" and st.session_state["page_toolbar_last"] != "➕":
         add_page("새 페이지")
         st.session_state["page_toolbar_last"] = "➕"
+        st.session_state["confirm_delete_page"] = False
         st.rerun()
+
+    # 페이지 삭제(확인 모드 진입만)
     elif page_action == "🗑" and st.session_state["page_toolbar_last"] != "🗑":
-        delete_page(current_page_id)
         st.session_state["page_toolbar_last"] = "🗑"
-        st.rerun()
+        st.session_state["confirm_delete_page"] = True
+
     else:
         # 다른 상태는 last 값만 갱신
         st.session_state["page_toolbar_last"] = page_action
+        if page_action != "🗑":
+            st.session_state["confirm_delete_page"] = False
 
-    # ✏️ 이 선택되면 이름 변경 UI 표시
+    # 이름 변경 모드 진입
     if page_action == "✏️":
         st.session_state["renaming_page"] = True
         st.session_state["rename_temp"] = choice
 
+    # 페이지 삭제 확인 UI
+    if st.session_state["confirm_delete_page"]:
+        st.warning("페이지를 삭제하시겠습니까?")
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("삭제", key="confirm_page_delete"):
+                delete_page(current_page_id)
+                st.session_state["confirm_delete_page"] = False
+                st.session_state["page_toolbar"] = "-"
+                st.rerun()
+        with c2:
+            if st.button("취소", key="cancel_page_delete"):
+                st.session_state["confirm_delete_page"] = False
+                st.session_state["page_toolbar"] = "-"
+                st.rerun()
+
+    # 페이지 이름 변경 UI
     if st.session_state["renaming_page"]:
         new_title = st.text_input(
             "새 페이지 이름",
@@ -272,10 +296,12 @@ with st.sidebar:
             if st.button("이름 변경", key="rename_save"):
                 rename_page(current_page_id, new_title.strip() or "제목 없음")
                 st.session_state["renaming_page"] = False
+                st.session_state["page_toolbar"] = "-"
                 st.rerun()
         with c2:
             if st.button("취소", key="rename_cancel"):
                 st.session_state["renaming_page"] = False
+                st.session_state["page_toolbar"] = "-"
                 st.rerun()
 
 # ---------------------------
@@ -301,25 +327,27 @@ st.radio(
 card_action = st.session_state["card_toolbar"]
 
 # ---------------------------
-# 카드 렌더링 (제목 + 내용)
+# 카드 렌더링 (제목 = expander 헤더, 내부에 제목/내용 컴포넌트)
 # ---------------------------
 for card_id, title, content in cards:
-    st.text_input(
-        "",
-        value=title,
-        key=f"title_{card_id}",
-        label_visibility="collapsed",
-        placeholder="제목 입력",
-    )
+    header = title if title else "제목 없음"
+    with st.expander(header, expanded=True):
+        st.text_input(
+            "",
+            value=title,
+            key=f"title_{card_id}",
+            label_visibility="collapsed",
+            placeholder="제목 입력",
+        )
 
-    st.text_area(
-        "",
-        value=content,
-        height=110,
-        key=f"content_{card_id}",
-        label_visibility="collapsed",
-        placeholder="내용을 입력하세요",
-    )
+        st.text_area(
+            "",
+            value=content,
+            height=110,
+            key=f"content_{card_id}",
+            label_visibility="collapsed",
+            placeholder="내용을 입력하세요",
+        )
 
     st.markdown("---")
 
@@ -338,7 +366,10 @@ if card_action == "💾 저장" and st.session_state["card_toolbar_last"] != "�
     st.rerun()
 
 # 2) 카드 추가 (한 번만 실행)
-elif card_action == "＋ 카드 추가" and st.session_state["card_toolbar_last"] != "＋ 카드 추가":
+elif (
+    card_action == "＋ 카드 추가"
+    and st.session_state["card_toolbar_last"] != "＋ 카드 추가"
+):
     add_card(current_page_id)
     st.session_state["card_toolbar_last"] = "＋ 카드 추가"
     st.rerun()
