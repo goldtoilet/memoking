@@ -1,4 +1,2 @@
 streamlit==1.39.0
-supabase-py==2.9.0
-python-dotenv==1.0.1
 streamlit-option-menu==0.3.12
