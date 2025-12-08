@@ -74,24 +74,51 @@ def delete_page_db(page_id: str):
 
 
 # ------------------------------------------------
-# 4. 데이터 모델 (심플 버전)
+# 4. 데이터 모델 (카드 리스트 구조)
 # ------------------------------------------------
 def new_page(title: str, order_index: int) -> Dict[str, Any]:
-    """blocks 필드는 memo 텍스트만 저장"""
+    """blocks -> cards: [ {id,title,content}, ... ]"""
+    first_card = {
+        "id": str(uuid.uuid4()),
+        "title": "",
+        "content": "",
+    }
     return {
         "id": str(uuid.uuid4()),
         "title": title,
-        "subtitle": "",           # 지금은 사용하지 않지만 필드 유지
+        "subtitle": "",
         "order_index": order_index,
-        "blocks": {"memo": ""},   # 심플 구조
+        "blocks": {"cards": [first_card]},
     }
 
 
-def get_memo_from_page(page: Dict[str, Any]) -> str:
-    blocks = page.get("blocks")
-    if isinstance(blocks, dict) and "memo" in blocks:
-        return blocks["memo"] or ""
-    return ""
+def extract_cards_from_blocks(page: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """기존 memo 구조도 카드 1개로 변환해주는 함수"""
+    blocks = page.get("blocks") or {}
+    cards: List[Dict[str, Any]] = []
+
+    if isinstance(blocks, dict):
+        if "cards" in blocks and isinstance(blocks["cards"], list):
+            cards = blocks["cards"]
+        elif "memo" in blocks:  # 예전 단일 메모 구조
+            cards = [
+                {
+                    "id": str(uuid.uuid4()),
+                    "title": page.get("title", ""),
+                    "content": blocks.get("memo", "") or "",
+                }
+            ]
+
+    # 최소 1개는 존재하도록
+    if not cards:
+        cards = [
+            {
+                "id": str(uuid.uuid4()),
+                "title": "",
+                "content": "",
+            }
+        ]
+    return cards
 
 
 # ------------------------------------------------
@@ -124,7 +151,8 @@ def load_current_page():
         return
     page = fetch_page(pid)
     if page:
-        page["memo"] = get_memo_from_page(page)
+        # blocks -> cards 로 변환해서 붙여놓기
+        page["cards"] = extract_cards_from_blocks(page)
         st.session_state["current_page"] = page
 
 
@@ -132,19 +160,20 @@ def save_current_page():
     page = st.session_state.get("current_page")
     if not page:
         return
+    cards = page.get("cards", [])
     page_to_save = {
         "id": page["id"],
         "title": page.get("title", ""),
         "subtitle": page.get("subtitle", ""),
         "order_index": page.get("order_index", 0),
-        "blocks": {"memo": page.get("memo", "")},
+        "blocks": {"cards": cards},
     }
     update_page(page_to_save)
     reload_pages()
 
 
 # ------------------------------------------------
-# 6. 스타일 (배경/에디터 색 통일 + 한 줄 네비게이션)
+# 6. 스타일 (배경/에디터 색 일치 + 카드 스타일)
 # ------------------------------------------------
 st.markdown(
     """
@@ -158,6 +187,11 @@ st.markdown(
 body {
     background-color: var(--memoking-bg);
     color: var(--memoking-text);
+}
+
+/* 메인 컨테이너 배경도 동일하게 */
+[data-testid="stAppViewContainer"] .main .block-container {
+    background-color: var(--memoking-bg);
 }
 
 /* 전체 텍스트 색상 진한 그레이 */
@@ -222,11 +256,20 @@ html, body, [class^="css"], .stMarkdown, .stTextInput, .stTextArea {
     font-weight: 700 !important;
 }
 
-/* textarea 기본 높이 */
+/* textarea 기본 높이 (카드당 1/3 정도) */
 .stTextArea textarea {
-    min-height: 360px;
+    min-height: 120px;
     font-size: 0.9rem !important;
     line-height: 1.4 !important;
+}
+
+/* 카드 스타일: 배경색은 윈도우와 같지만 테두리+그림자로 구분 */
+.memo-card {
+    background-color: var(--memoking-bg);
+    border-radius: 18px;
+    padding: 10px 12px;
+    border: 1px solid #c1c4d0;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
 }
 </style>
 """,
@@ -358,7 +401,7 @@ page = st.session_state.get("current_page")
 if not page:
     st.info("왼쪽에서 페이지를 선택하거나 새 페이지를 만들어주세요.")
 else:
-    # 제목 (볼드, 라벨 없음)
+    # 페이지 제목 (볼드)
     page["title"] = st.text_input(
         "",
         value=page["title"],
@@ -369,18 +412,71 @@ else:
 
     st.write("")  # 작은 간격
 
-    # 메모 에디터 (배경 = 창 배경, 라벨 없음)
-    page["memo"] = st.text_area(
-        "",
-        value=page.get("memo", ""),
-        key="memo_textarea",
-        label_visibility="collapsed",
-        placeholder="여기에 메모를 작성하세요",
-    )
+    cards: List[Dict[str, Any]] = page.get("cards", [])
+    if not cards:
+        cards.append({"id": str(uuid.uuid4()), "title": "", "content": ""})
 
-    if st.button("저장", type="primary", key="save_memo_btn"):
-        st.session_state["current_page"] = page
-        save_current_page()
-        st.success("저장되었습니다.")
+    # 카드들 렌더링
+    for idx, card in enumerate(cards):
+        with st.container():
+            st.markdown('<div class="memo-card">', unsafe_allow_html=True)
+
+            card["title"] = st.text_input(
+                "",
+                value=card.get("title", ""),
+                key=f"card_title_{card['id']}",
+                label_visibility="collapsed",
+                placeholder=f"카드 {idx+1} 제목",
+            )
+
+            card["content"] = st.text_area(
+                "",
+                value=card.get("content", ""),
+                key=f"card_content_{card['id']}",
+                label_visibility="collapsed",
+                placeholder="내용을 입력하세요",
+            )
+
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        st.write("")  # 카드 간 간격
+
+    page["cards"] = cards
+    st.session_state["current_page"] = page
+
+    # 버튼 줄: 저장 / 카드 추가 / 카드 삭제
+    b1, b2, b3 = st.columns([2, 1, 1])
+
+    with b1:
+        if st.button("저장", type="primary", key="save_cards_btn"):
+            save_current_page()
+            st.success("저장되었습니다.")
+
+    with b2:
+        if st.button("＋ 카드", key="add_card_btn"):
+            cards.append(
+                {
+                    "id": str(uuid.uuid4()),
+                    "title": "",
+                    "content": "",
+                }
+            )
+            page["cards"] = cards
+            st.session_state["current_page"] = page
+            save_current_page()
+            st.rerun()
+
+    with b3:
+        if st.button("🗑 카드", key="delete_card_btn"):
+            if len(cards) > 1:
+                cards.pop()  # 마지막 카드 삭제
+            else:
+                # 카드가 1개만 있으면 내용만 비우기
+                cards[0]["title"] = ""
+                cards[0]["content"] = ""
+            page["cards"] = cards
+            st.session_state["current_page"] = page
+            save_current_page()
+            st.rerun()
 
 st.markdown("</div>", unsafe_allow_html=True)
