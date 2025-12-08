@@ -165,7 +165,7 @@ st.markdown(
     background-color: #f4f5f7;
 }
 
-/* 세로 블럭 간격 전체적으로 줄이기 */
+/* 세로 블럭 간격 줄이기 */
 .stVerticalBlock {
     gap: 0.25rem !important;
 }
@@ -175,40 +175,44 @@ st.markdown(
     display: none !important;
 }
 
-/* 입력/에디터 스타일 */
+/* 입력 필드 공통 스타일 */
 .stTextInput input, .stTextArea textarea {
-    background-color: #f4f5f7 !important;
     border-radius: 10px !important;
     border: 1px solid #cfd3de !important;
     color: #222 !important;
 }
 
-/* 카드 제목 인풋은 일반체(헤더만 Bold) */
+/* 제목 입력칸(일반체) */
 .stTextInput input {
+    background-color: #f4f5f7 !important;
     font-weight: 400 !important;
     font-size: 0.95rem !important;
 }
 
-/* 내용 textarea 높이 */
+/* 내용 textarea → 흰색 배경으로 변경 */
 .stTextArea textarea {
     min-height: 110px !important;
     font-size: 0.95rem !important;
+    background-color: #ffffff !important;  /* ← 배경 흰색 */
+    color: #222 !important;
+    border-radius: 10px !important;
+    border: 1px solid #cfd3de !important;
 }
 
-/* 버튼 – 작고 컴팩트하게 */
+/* 버튼 */
 .stButton button {
     padding: 0.18rem 0.6rem !important;
     font-size: 0.80rem !important;
     border-radius: 8px !important;
 }
 
-/* Expander 헤더 텍스트 볼드 */
+/* Expander 헤더 Bold */
 details > summary {
     font-weight: 700 !important;
     color: #222 !important;
 }
 
-/* 구분선 간격 (위아래 여백 최소화) */
+/* hr 간격 */
 hr {
     margin-top: 0.45rem !important;
     margin-bottom: 0.45rem !important;
@@ -217,6 +221,7 @@ hr {
 """,
     unsafe_allow_html=True,
 )
+
 
 # ============================================================
 # 세션 상태 기본값 + page_toolbar 리셋 플래그
