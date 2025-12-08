@@ -7,17 +7,16 @@ import streamlit as st
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
-# 1) 가장 먼저 페이지 설정 (에러 해결 포인트!)
+# 1) 가장 먼저 페이지 설정
 st.set_page_config(
     page_title="memoking",
     page_icon="📝",
     layout="wide",
 )
 
-# 2) 그 다음부터 나머지 설정들
+# 2) 환경 변수 로딩
 load_dotenv()
 
-# Streamlit Cloud 에서는 st.secrets 먼저 보고, 없으면 .env 에서 가져오기
 SUPABASE_URL = st.secrets.get("SUPABASE_URL", os.getenv("SUPABASE_URL", ""))
 SUPABASE_KEY = st.secrets.get("SUPABASE_ANON_KEY", os.getenv("SUPABASE_ANON_KEY", ""))
 
@@ -209,6 +208,23 @@ def delete_page_db(page_id: str):
 
 
 # -----------------------------
+# 샘플 페이지 생성
+# -----------------------------
+def create_sample_page() -> Dict[str, Any]:
+    page = new_page("첫 페이지")
+    page["subtitle"] = "memoking 기본 샘플"
+
+    folder = new_folder("샘플 폴더 1")
+    text = new_text_block("제목 1", "여기에 메모를 써보세요.")
+    text["folder_id"] = folder["id"]
+    point = new_point_block("중요 포인트를 적어보세요.")
+    point["folder_id"] = folder["id"]
+
+    page["blocks"] = [folder, text, point]
+    return page
+
+
+# -----------------------------
 # 세션 상태 초기화 & 로딩
 # -----------------------------
 def init_state():
@@ -224,7 +240,8 @@ def init_state():
 def load_pages_to_state():
     st.session_state["pages"] = fetch_pages()
     if not st.session_state["pages"]:
-        page = new_page("첫 페이지")
+        # DB 비어 있으면 샘플 페이지 하나 자동 생성
+        page = create_sample_page()
         insert_page(page)
         st.session_state["pages"] = fetch_pages()
 
@@ -289,6 +306,9 @@ body {
     background-color: #ffffff;
     font-weight: 600;
 }
+.page-item button {
+    border-radius: 10px;
+}
 .memo-card {
     border-radius: 18px;
     padding: 10px 12px;
@@ -321,14 +341,15 @@ with left_col:
 
     for p in pages:
         is_active = p["id"] == current_id
-        cls = "page-item active" if is_active else "page-item"
-        # 클릭 영역을 버튼 대신 markdown + st.button 조합으로
-        col_btn, _ = st.columns([4, 1])
-        with col_btn:
-            if st.button(p["title"], key=f"page_btn_{p['id']}", use_container_width=True):
-                st.session_state["selected_page_id"] = p["id"]
-                load_current_page()
-                st.experimental_rerun()
+        label = p["title"]
+        if st.button(
+            label,
+            key=f"page_btn_{p['id']}",
+            use_container_width=True,
+        ):
+            st.session_state["selected_page_id"] = p["id"]
+            load_current_page()
+            st.rerun()
 
     st.markdown("---")
 
@@ -342,7 +363,7 @@ with left_col:
             load_pages_to_state()
             st.session_state["selected_page_id"] = page["id"]
             load_current_page()
-            st.experimental_rerun()
+            st.rerun()
 
     with col_del:
         if st.button("🗑 삭제", use_container_width=True):
@@ -389,17 +410,17 @@ with right_col:
                 if st.button("↑", key=f"up_{block['id']}"):
                     move_block(blocks, block["id"], "up")
                     save_current_page()
-                    st.experimental_rerun()
+                    st.rerun()
             with c3:
                 if st.button("↓", key=f"down_{block['id']}"):
                     move_block(blocks, block["id"], "down")
                     save_current_page()
-                    st.experimental_rerun()
+                    st.rerun()
             with c4:
                 if st.button("🎨", key=f"bg_{block['id']}"):
                     toggle_bg(block)
                     save_current_page()
-                    st.experimental_rerun()
+                    st.rerun()
             with c5:
                 if st.button("🗑", key=f"del_{block['id']}"):
                     st.session_state["pending_delete_block_id"] = block["id"]
@@ -458,19 +479,19 @@ with right_col:
                 folder = new_folder()
                 blocks.append(folder)
                 save_current_page()
-                st.experimental_rerun()
+                st.rerun()
         with add_col2:
             if st.button("＋ 텍스트 카드", use_container_width=True):
                 text_b = new_text_block()
                 blocks.append(text_b)
                 save_current_page()
-                st.experimental_rerun()
+                st.rerun()
         with add_col3:
             if st.button("＋ 포인트 카드", use_container_width=True):
                 point_b = new_point_block()
                 blocks.append(point_b)
                 save_current_page()
-                st.experimental_rerun()
+                st.rerun()
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -488,15 +509,17 @@ if st.session_state.get("show_delete_page_modal", False):
                     delete_page_db(pid)
                     load_pages_to_state()
                     if st.session_state["pages"]:
-                        st.session_state["selected_page_id"] = st.session_state["pages"][0]["id"]
+                        st.session_state["selected_page_id"] = st.session_state["pages"][0][
+                            "id"
+                        ]
                     else:
                         st.session_state["selected_page_id"] = None
                 st.session_state["show_delete_page_modal"] = False
-                st.experimental_rerun()
+                st.rerun()
         with c2:
             if st.button("취소"):
                 st.session_state["show_delete_page_modal"] = False
-                st.experimental_rerun()
+                st.rerun()
 
 # -------- 모달: 페이지 제목 편집 --------
 if st.session_state.get("show_rename_page_modal", False):
@@ -518,11 +541,11 @@ if st.session_state.get("show_rename_page_modal", False):
                     update_page(page)
                 load_pages_to_state()
                 st.session_state["show_rename_page_modal"] = False
-                st.experimental_rerun()
+                st.rerun()
         with c2:
             if st.button("취소"):
                 st.session_state["show_rename_page_modal"] = False
-                st.experimental_rerun()
+                st.rerun()
 
 # -------- 모달: 블록 삭제 --------
 if st.session_state.get("show_delete_block_modal", False):
@@ -538,9 +561,9 @@ if st.session_state.get("show_delete_block_modal", False):
                     save_current_page()
                 st.session_state["pending_delete_block_id"] = None
                 st.session_state["show_delete_block_modal"] = False
-                st.experimental_rerun()
+                st.rerun()
         with c2:
             if st.button("취소", key="cancel_block_delete"):
                 st.session_state["pending_delete_block_id"] = None
                 st.session_state["show_delete_block_modal"] = False
-                st.experimental_rerun()
+                st.rerun()
