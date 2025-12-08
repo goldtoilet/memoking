@@ -81,9 +81,9 @@ def new_page(title: str, order_index: int) -> Dict[str, Any]:
     return {
         "id": str(uuid.uuid4()),
         "title": title,
-        "subtitle": "",
+        "subtitle": "",           # 지금은 사용하지 않지만 필드 유지
         "order_index": order_index,
-        "blocks": {"memo": ""},  # 심플 구조
+        "blocks": {"memo": ""},   # 심플 구조
     }
 
 
@@ -91,7 +91,6 @@ def get_memo_from_page(page: Dict[str, Any]) -> str:
     blocks = page.get("blocks")
     if isinstance(blocks, dict) and "memo" in blocks:
         return blocks["memo"] or ""
-    # 예전 구조일 수도 있으니 방어적으로
     return ""
 
 
@@ -125,7 +124,6 @@ def load_current_page():
         return
     page = fetch_page(pid)
     if page:
-        # memo 값만 꺼내서 캐시
         page["memo"] = get_memo_from_page(page)
         st.session_state["current_page"] = page
 
@@ -134,7 +132,6 @@ def save_current_page():
     page = st.session_state.get("current_page")
     if not page:
         return
-    # memo를 blocks에 다시 넣어서 저장
     page_to_save = {
         "id": page["id"],
         "title": page.get("title", ""),
@@ -147,13 +144,25 @@ def save_current_page():
 
 
 # ------------------------------------------------
-# 6. 스타일 (톤 통일 + 깔끔한 사이드바/에디터)
+# 6. 스타일 (배경/에디터 색 통일 + 한 줄 네비게이션)
 # ------------------------------------------------
 st.markdown(
     """
 <style>
+:root {
+    --memoking-bg: #dde1ea;
+    --memoking-text: #333333;
+}
+
+/* 전체 배경 & 텍스트색 */
 body {
-    background-color: #d8dae2;
+    background-color: var(--memoking-bg);
+    color: var(--memoking-text);
+}
+
+/* 전체 텍스트 색상 진한 그레이 */
+html, body, [class^="css"], .stMarkdown, .stTextInput, .stTextArea {
+    color: var(--memoking-text) !important;
 }
 
 /* 메인 레이아웃 */
@@ -163,30 +172,29 @@ body {
     padding: 1rem;
 }
 
-/* 사이드바 배경을 본문과 살짝 다르게 */
+/* 사이드바 배경 */
 [data-testid="stSidebar"] {
-    background-color: #ececf3;
-    min-width: 180px;
-    max-width: 230px;
-    border-right: 1px solid #d0d2dd;
+    background-color: #e7e9f0;
+    min-width: 170px;
+    max-width: 220px;
+    border-right: 1px solid #c1c4d0;
 }
 
-/* 사이드바 제목 */
+/* 사이드바 제목을 조금 더 크게, 굵게 */
 .sidebar-title {
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     font-weight: 800;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
 }
 
-/* 사이드바 라디오 리스트를 카드형으로 */
+/* 사이드바 라디오: 한 줄 네비게이션 느낌 */
 [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label {
     display: block;
-    padding: 5px 9px;
-    border-radius: 10px;
-    margin-bottom: 4px;
-    background-color: rgba(255,255,255,0.6);
-    border: 1px solid transparent;
-    font-size: 0.86rem;
+    padding: 2px 4px 4px 0;
+    margin-bottom: 2px;
+    font-size: 0.85rem;
+    border-bottom: 1px solid #d0d3dd;
+    background-color: transparent;
 }
 
 /* 라디오 동그라미 숨기기 */
@@ -194,45 +202,31 @@ body {
     display: none;
 }
 
-/* 사이드바 아이콘 버튼 더 작게 */
+/* 아이콘 버튼 더 작게 */
 .sidebar-icon-btn button {
     padding: 0.05rem 0.25rem;
     font-size: 0.75rem;
 }
 
-/* 제목 카드 */
-.title-card {
-    background-color: #f6f6fb;
-    border-radius: 16px;
-    padding: 10px 14px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.04);
-    margin-bottom: 12px;
-}
-
-/* 메모 카드 */
-.memo-card {
-    background-color: #f6f6fb;
-    border-radius: 20px;
-    padding: 12px 16px;
-    box-shadow: 0 6px 14px rgba(0,0,0,0.05);
-}
-
-/* Text input / textarea 배경을 카드와 동일하게 */
-.stTextInput input, .stTextArea textarea {
-    background-color: #f6f6fb !important;
+/* 입력·에디터 배경을 전체 배경과 동일하게 */
+.stTextInput input,
+.stTextArea textarea {
+    background-color: var(--memoking-bg) !important;
     border-radius: 10px !important;
-    border: 1px solid #d4d6e2 !important;
+    border: 1px solid #c1c4d0 !important;
+    color: var(--memoking-text) !important;
 }
 
-/* 입력 폰트 조금 부드럽게 */
-.stTextInput input, .stTextArea textarea {
+/* 제목은 굵게 */
+.stTextInput input {
+    font-weight: 700 !important;
+}
+
+/* textarea 기본 높이 */
+.stTextArea textarea {
+    min-height: 360px;
     font-size: 0.9rem !important;
     line-height: 1.4 !important;
-}
-
-/* text_area 높이 조정 */
-textarea {
-    min-height: 320px;
 }
 </style>
 """,
@@ -277,7 +271,7 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # 하단 아이콘 3개 (새 페이지 / 삭제 / 이름변경)
+    # 하단 아이콘 3개 (새 페이지 / 삭제 / 이름변경) - 작은 버튼
     col_new, col_del, col_edit = st.columns(3)
 
     with col_new:
@@ -364,39 +358,29 @@ page = st.session_state.get("current_page")
 if not page:
     st.info("왼쪽에서 페이지를 선택하거나 새 페이지를 만들어주세요.")
 else:
-    # 상단: 제목 / 부제 (타이틀 카드)
-    with st.container():
-        st.markdown('<div class="title-card">', unsafe_allow_html=True)
-        page["title"] = st.text_input(
-            "",
-            value=page["title"],
-            key="title_input",
-            label_visibility="collapsed",
-            placeholder="제목",
-        )
-        page["subtitle"] = st.text_input(
-            "",
-            value=page.get("subtitle", ""),
-            key="subtitle_input",
-            label_visibility="collapsed",
-            placeholder="부제 (선택)",
-        )
-        st.markdown("</div>", unsafe_allow_html=True)
+    # 제목 (볼드, 라벨 없음)
+    page["title"] = st.text_input(
+        "",
+        value=page["title"],
+        key="title_input",
+        label_visibility="collapsed",
+        placeholder="제목",
+    )
 
-    # 메모 카드
-    with st.container():
-        st.markdown('<div class="memo-card">', unsafe_allow_html=True)
-        page["memo"] = st.text_area(
-            "",
-            value=page.get("memo", ""),
-            key="memo_textarea",
-            label_visibility="collapsed",
-            placeholder="여기에 메모를 작성하세요",
-        )
-        if st.button("저장", type="primary", key="save_memo_btn"):
-            st.session_state["current_page"] = page
-            save_current_page()
-            st.success("저장되었습니다.")
-        st.markdown("</div>", unsafe_allow_html=True)
+    st.write("")  # 작은 간격
+
+    # 메모 에디터 (배경 = 창 배경, 라벨 없음)
+    page["memo"] = st.text_area(
+        "",
+        value=page.get("memo", ""),
+        key="memo_textarea",
+        label_visibility="collapsed",
+        placeholder="여기에 메모를 작성하세요",
+    )
+
+    if st.button("저장", type="primary", key="save_memo_btn"):
+        st.session_state["current_page"] = page
+        save_current_page()
+        st.success("저장되었습니다.")
 
 st.markdown("</div>", unsafe_allow_html=True)
