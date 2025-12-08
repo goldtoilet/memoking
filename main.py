@@ -33,9 +33,8 @@ def init_db():
 
 db = init_db()
 
-
 # ---------------------------
-# PAGE LOAD
+# PAGE / CARD 함수
 # ---------------------------
 def get_pages():
     cur = db.cursor()
@@ -54,6 +53,12 @@ def delete_page(page_id):
     cur = db.cursor()
     cur.execute("DELETE FROM cards WHERE page_id=?", (page_id,))
     cur.execute("DELETE FROM pages WHERE id=?", (page_id,))
+    db.commit()
+
+
+def rename_page(page_id, new_title):
+    cur = db.cursor()
+    cur.execute("UPDATE pages SET title=? WHERE id=?", (new_title, page_id))
     db.commit()
 
 
@@ -84,6 +89,67 @@ def delete_card(card_id):
 
 
 # ---------------------------
+# 공통 스타일
+# ---------------------------
+st.markdown(
+    """
+<style>
+/* 전체 배경 톤 */
+[data-testid="stAppViewContainer"] {
+    background-color: #f4f5f7;
+}
+
+/* 카드 스타일 */
+.card-box {
+    background-color: #f0f2f6;
+    border-radius: 16px;
+    padding: 10px 12px;
+    border: 1px solid #e0e3ea;
+}
+
+/* 카드 안의 버튼 줄: 왼쪽 정렬 */
+.card-actions {
+    display: flex;
+    gap: 0.4rem;
+    justify-content: flex-start;
+    align-items: center;
+    margin-top: 0.4rem;
+}
+
+.card-actions .stButton {
+    margin: 0;
+}
+
+/* 버튼 조금 작게 */
+.card-actions .stButton button {
+    padding: 0.3rem 0.7rem;
+    font-size: 0.85rem;
+}
+
+/* 입력 필드 라벨 숨기기 (위쪽 빈 라벨 영역 제거) */
+.stTextInput label, .stTextArea label {
+    display: none !important;
+}
+
+/* 입력/에디터 배경 흰색 */
+.stTextInput input, .stTextArea textarea {
+    background-color: #ffffff !important;
+    border-radius: 10px !important;
+    border: 1px solid #cfd3de !important;
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+# 페이지 제목 수정 상태
+if "renaming_page" not in st.session_state:
+    st.session_state["renaming_page"] = False
+if "rename_temp" not in st.session_state:
+    st.session_state["rename_temp"] = ""
+
+
+# ---------------------------
 # 사이드바 (Notion Navigation Style)
 # ---------------------------
 with st.sidebar:
@@ -95,18 +161,23 @@ with st.sidebar:
 
     # 페이지가 없다면 하나 생성
     if not pages:
-        new_page_id = add_page("아이디어")
+        add_page("아이디어")
         pages = get_pages()
 
     page_titles = [p[1] for p in pages]
     page_ids = [p[0] for p in pages]
 
-    selected = option_menu(
+    # 현재 선택 페이지 인덱스
+    current_index = 0
+    if "current_page_id" in st.session_state and st.session_state["current_page_id"] in page_ids:
+        current_index = page_ids.index(st.session_state["current_page_id"])
+
+    choice = option_menu(
         None,
         page_titles,
         icons=["journal-text"] * len(page_titles),
         menu_icon="menu-app",
-        default_index=0,
+        default_index=current_index,
         styles={
             "container": {"background-color": "#f5f6fa"},
             "icon": {"color": "#4c4c4c"},
@@ -119,32 +190,54 @@ with st.sidebar:
             "nav-link-selected": {
                 "background-color": "#dcdfe5",
                 "color": "black"
-            }
-        }
+            },
+        },
     )
 
-    # 현재 페이지 id
-    current_page_id = page_ids[page_titles.index(selected)]
+    current_page_id = page_ids[page_titles.index(choice)]
+    st.session_state["current_page_id"] = current_page_id
 
     st.markdown("---")
 
-    # 페이지 추가/삭제 버튼
-    colA, colB = st.columns(2)
+    colA, colB, colC = st.columns(3)
     with colA:
-        if st.button("➕ 페이지 추가"):
+        if st.button("➕", help="페이지 추가"):
             add_page("새 페이지")
             st.rerun()
-
     with colB:
-        if st.button("🗑 페이지 삭제"):
+        if st.button("🗑", help="페이지 삭제"):
             delete_page(current_page_id)
             st.rerun()
+    with colC:
+        if st.button("✏️", help="페이지 이름 변경"):
+            st.session_state["renaming_page"] = True
+            st.session_state["rename_temp"] = choice
+
+    # 페이지 이름 수정 UI
+    if st.session_state["renaming_page"]:
+        st.markdown("------")
+        new_title = st.text_input(
+            "",
+            value=st.session_state["rename_temp"],
+            key="rename_input",
+            label_visibility="collapsed",
+        )
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("저장", key="rename_save"):
+                rename_page(current_page_id, new_title.strip() or "제목 없음")
+                st.session_state["renaming_page"] = False
+                st.rerun()
+        with c2:
+            if st.button("취소", key="rename_cancel"):
+                st.session_state["renaming_page"] = False
+                st.rerun()
 
 
 # ---------------------------
-# 본문 UI 시작
+# 본문 UI
 # ---------------------------
-st.markdown(f"## {selected}")
+st.markdown(f"## {choice}")
 st.markdown("---")
 
 cards = get_cards(current_page_id)
@@ -154,37 +247,51 @@ if not cards:
     add_card(current_page_id)
     cards = get_cards(current_page_id)
 
-
 # ---------------------------
 # 카드 렌더링
 # ---------------------------
-for card in cards:
+for idx, card in enumerate(cards):
     card_id, title, content = card
 
-    with st.container():
-        st.markdown(
-            """
-            <div style='background-color:#f0f2f6; padding:15px; border-radius:10px;'>
-            """,
-            unsafe_allow_html=True
-        )
+    # 카드 박스
+    st.markdown("<div class='card-box'>", unsafe_allow_html=True)
 
-        new_title = st.text_input(" ", value=title, label_visibility="collapsed", key=f"title_{card_id}")
-        new_content = st.text_area(" ", value=content, height=120,
-                                   label_visibility="collapsed", key=f"content_{card_id}")
+    new_title = st.text_input(
+        "",
+        value=title,
+        key=f"title_{card_id}",
+        label_visibility="collapsed",
+        placeholder="제목 입력",
+    )
 
-        col1, col2, col3 = st.columns([1, 1, 1])
-        with col1:
-            if st.button("💾 저장", key=f"save_{card_id}"):
-                update_card(card_id, new_title, new_content)
-                st.rerun()
-        with col2:
-            if st.button("➕ 추가", key=f"add_{card_id}"):
-                add_card(current_page_id)
-                st.rerun()
-        with col3:
-            if st.button("🗑 삭제", key=f"delete_{card_id}"):
-                delete_card(card_id)
-                st.rerun()
+    new_content = st.text_area(
+        "",
+        value=content,
+        height=120,
+        key=f"content_{card_id}",
+        label_visibility="collapsed",
+        placeholder="내용을 입력하세요",
+    )
 
-        st.markdown("</div><br>", unsafe_allow_html=True)
+    # 버튼 한 줄, 왼쪽 정렬
+    st.markdown("<div class='card-actions'>", unsafe_allow_html=True)
+    save_clicked = st.button("💾 저장", key=f"save_{card_id}")
+    add_clicked = st.button("＋ 추가", key=f"add_{card_id}")
+    delete_clicked = st.button("🗑 삭제", key=f"delete_{card_id}")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)  # card-box 끝
+
+    # 카드와 다음 컴포넌트 사이 separator
+    st.markdown("---")
+
+    # 버튼 동작
+    if save_clicked:
+        update_card(card_id, new_title, new_content)
+        st.rerun()
+    if add_clicked:
+        add_card(current_page_id)
+        st.rerun()
+    if delete_clicked:
+        delete_card(card_id)
+        st.rerun()
