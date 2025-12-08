@@ -129,18 +129,6 @@ st.markdown(
     padding: 0.35rem 0.8rem;
     font-size: 0.85rem;
 }
-
-/* 버튼들을 항상 가로 한 줄에 배치하기 위한 공통 클래스 */
-.btn-row {
-    display: block;
-    margin-top: 0.4rem;
-}
-
-/* btn-row 안에 있는 모든 st.button 컨테이너를 inline-block 으로 */
-.btn-row [data-testid="stButton"] {
-    display: inline-block !important;
-    margin-right: 0.4rem;
-}
 </style>
 """,
     unsafe_allow_html=True,
@@ -203,14 +191,14 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # 사이드바 하단 버튼 3개 (CSS로 가로 배치)
-    btn_sidebar = st.container()
-    with btn_sidebar:
-        st.markdown('<div class="btn-row">', unsafe_allow_html=True)
+    # 사이드바 하단 버튼 3개 – columns 로 가로 배치
+    colA, colB, colC = st.columns(3)
+    with colA:
         add_page_clicked = st.button("➕", help="페이지 추가", key="btn_add_page")
+    with colB:
         delete_page_clicked = st.button("🗑", help="페이지 삭제", key="btn_del_page")
+    with colC:
         rename_page_clicked = st.button("✏️", help="페이지 이름 변경", key="btn_rename_page")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     if add_page_clicked:
         add_page("새 페이지")
@@ -283,14 +271,14 @@ for idx, card in enumerate(cards):
         placeholder="내용을 입력하세요",
     )
 
-    # 카드 아래 버튼 3개를 CSS로 가로 한 줄에 배치
-    btn_row = st.container()
-    with btn_row:
-        st.markdown('<div class="btn-row">', unsafe_allow_html=True)
+    # 카드 아래 버튼 3개 – columns 로 가로 배치
+    col1, col2, col3 = st.columns(3)
+    with col1:
         save_clicked = st.button("💾 저장", key=f"save_{card_id}")
+    with col2:
         add_clicked = st.button("＋ 추가", key=f"add_{card_id}")
+    with col3:
         delete_clicked = st.button("🗑 삭제", key=f"delete_{card_id}")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     # 카드와 다음 카드 사이 구분선
     st.markdown("---")
