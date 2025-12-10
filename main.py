@@ -328,7 +328,7 @@ st.markdown('<div class="mk-main-wrapper">', unsafe_allow_html=True)
 
 st.markdown(
     "<h2 style='margin-bottom:0.15rem; text-align:right; "
-    "color:#374151; font-size:22px;'>MemoKing</h2>",
+    "color:#9ca3af; font-size:22px;'>MemoKing</h2>",
     unsafe_allow_html=True,
 )
 st.markdown("---")
