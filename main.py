@@ -294,22 +294,13 @@ with st.sidebar:
                 st.session_state["reset_page_toolbar"] = True
                 st.rerun()
 
-top_left, top_right = st.columns([3, 1])
-
-with top_left:
-    st.markdown(
-        f"<h4 style='margin-bottom:0.2rem;'>{choice}</h4>",
-        unsafe_allow_html=True,
-    )
-
-with top_right:
-    st.markdown(
-        "<h2 style='text-align:right; margin-bottom:0.2rem;'>MemoKing</h2>",
-        unsafe_allow_html=True,
-    )
-
 st.markdown(
-    "<div style='margin:0.8rem 0;'></div>",
+    "<h2 style='margin-bottom:0.2rem;'>MemoKing</h2>",
+    unsafe_allow_html=True,
+)
+st.markdown("---")
+st.markdown(
+    f"<h4 style='margin:0.6rem 0 0.4rem 0;'>{choice}</h4>",
     unsafe_allow_html=True,
 )
 
@@ -317,15 +308,6 @@ cards = get_cards(current_page_id)
 if not cards:
     add_card(current_page_id)
     cards = get_cards(current_page_id)
-
-st.radio(
-    "",
-    ["-", "💾 저장", "＋ 카드 추가", "🗑 카드 삭제"],
-    key="card_toolbar",
-    horizontal=True,
-    label_visibility="collapsed",
-)
-card_action = st.session_state.get("card_toolbar", "-")
 
 for card_id, title, content in cards:
     header = title if title else "제목 없음"
@@ -346,6 +328,20 @@ for card_id, title, content in cards:
             label_visibility="collapsed",
             placeholder="내용을 입력하세요",
         )
+
+st.markdown(
+    "<div style='margin:0.8rem 0;'></div>",
+    unsafe_allow_html=True,
+)
+
+st.radio(
+    "",
+    ["-", "💾 저장", "＋ 카드 추가", "🗑 카드 삭제"],
+    key="card_toolbar",
+    horizontal=True,
+    label_visibility="collapsed",
+)
+card_action = st.session_state.get("card_toolbar", "-")
 
 if card_action == "💾 저장" and st.session_state["card_toolbar_last"] != "💾 저장":
     for card_id, title, content in cards:
