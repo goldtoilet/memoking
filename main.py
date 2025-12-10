@@ -109,10 +109,10 @@ st.markdown(
     """
 <style>
 [data-testid="stAppViewContainer"] {
-    background-color: #f4f5f7;
+    background-color: #ffffff;
 }
 
-/* 세로 블럭 간격 살짝 줄이기 */
+/* 세로 블럭 간격 */
 .stVerticalBlock {
     gap: 0.25rem !important;
 }
@@ -126,19 +126,20 @@ st.markdown(
 .stTextInput input, .stTextArea textarea {
     border-radius: 8px !important;
     border: 1px solid #d1d5db !important;
-    color: #374151 !important;  /* 부드러운 다크그레이 */
+    color: #374151 !important;
 }
 
 .stTextInput input {
-    background-color: #f4f5f7 !important;
-    font-size: 0.92rem !important;
+    background-color: #f9fafb !important;
+    font-size: 0.92rem !important;   /* 대략 14~15px */
 }
 
-/* 내용 영역 높이 ↑ (두 배 정도) */
+/* 내용 영역: 눈에 잘 띄게, 높이 크게 */
 .stTextArea textarea {
     min-height: 180px !important;
     font-size: 0.92rem !important;
-    background-color: #ffffff !important;
+    background-color: #fefce8 !important;   /* 옅은 크림톤 */
+    border-color: #eab308 !important;       /* 부드러운 옐로우 강조 */
 }
 
 /* 버튼 */
@@ -148,30 +149,36 @@ st.markdown(
     border-radius: 999px !important;
 }
 
-/* expander(디스클로저) 전체 박스 - 높이, 패딩 최소화 */
-/* 배경을 전체 배경과 비슷한 연한 회색으로 */
+/* 우측 메인 컨텐츠 전체를 위로 올리기 */
+.mk-main-wrapper {
+    margin-top: -40px;
+}
+
+/* expander(디스클로저) 박스 */
 details {
     border-radius: 8px !important;
-    background-color: #f3f4f6 !important;  /* 배경과 비슷한 톤 */
+    background-color: #f9fafb !important;   /* 배경과 비슷한 연한 톤 */
     border: 1px solid #e5e7eb !important;
     padding: 0.05rem 0.45rem 0.3rem 0.45rem !important;
     margin-bottom: 0.25rem !important;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
 }
 
 details[open] {
     border-color: #e0e7ff !important;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
 }
 
-/* expander 헤더 - 폰트 조금 더 크게 + 톤 부드럽게 */
+/* expander 헤더 - 제목 폰트 좀 더 크게 */
 details > summary {
     font-weight: 600 !important;
     color: #374151 !important;
-    font-size: 1.0rem !important;      /* ↑ 좀 더 크게 */
+    font-size: 1.05rem !important;    /* 대략 16~17px */
     padding: 0.12rem 0 !important;
     line-height: 1.15 !important;
 }
 
-/* hr 간격도 컴팩트하게 */
+/* hr 간격 */
 hr {
     margin-top: 0.35rem !important;
     margin-bottom: 0.35rem !important;
@@ -182,9 +189,10 @@ hr {
     padding: 0.1rem 0 0.2rem 0;
 }
 
-/* 라디오 옵션 텍스트 약간 작게 */
+/* 라디오 옵션 텍스트 */
 div[role="radiogroup"] label {
-    font-size: 0.8rem !important;
+    font-size: 0.8rem !important;     /* 대략 13px */
+    color: #4b5563 !important;
 }
 </style>
 """,
@@ -324,13 +332,16 @@ with st.sidebar:
                 st.session_state["reset_page_toolbar"] = True
                 st.rerun()
 
+st.markdown('<div class="mk-main-wrapper">', unsafe_allow_html=True)
+
 st.markdown(
-    "<h2 style='margin-bottom:0.15rem; text-align:right; color:#374151;'>MemoKing</h2>",
+    "<h2 style='margin-bottom:0.15rem; text-align:right; "
+    "color:#374151; font-size:22px;'>MemoKing</h2>",
     unsafe_allow_html=True,
 )
 st.markdown("---")
 st.markdown(
-    f"<h4 style='margin:0.4rem 0 0.3rem 0; color:#4b5563;'>{choice}</h4>",
+    f"<h4 style='margin:0.4rem 0 0.3rem 0; color:#4b5563; font-size:16px;'>{choice}</h4>",
     unsafe_allow_html=True,
 )
 
@@ -352,7 +363,7 @@ for card_id, title, content in cards:
         st.text_area(
             "",
             value=content,
-            height=180,   # ← 내용 높이 두 배 정도
+            height=180,
             key=f"content_{card_id}",
             label_visibility="collapsed",
             placeholder="내용을 입력하세요",
@@ -372,6 +383,8 @@ card_action = st.radio(
 )
 st.markdown("</div>", unsafe_allow_html=True)
 
+st.markdown("</div>", unsafe_allow_html=True)
+
 if card_action == "💾 저장":
     for card_id, title, content in cards:
         new_title = st.session_state.get(f"title_{card_id}", title)
@@ -383,7 +396,7 @@ if card_action == "💾 저장":
 
 elif card_action == "＋ 카드 추가":
     add_card(current_page_id)
-    st.session_state["card_toolbar_run_id"] += 1
+    st.session_state["card_toolbar_run_id"] += 1    #
     st.rerun()
 
 elif card_action == "🗑 카드 삭제":
