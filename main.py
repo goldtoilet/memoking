@@ -112,17 +112,14 @@ st.markdown(
     background-color: #ffffff;
 }
 
-/* 세로 블럭 간격 */
 .stVerticalBlock {
     gap: 0.25rem !important;
 }
 
-/* 입력 라벨 숨기기 */
 .stTextInput label, .stTextArea label {
     display: none !important;
 }
 
-/* 인풋/텍스트 영역 공통 */
 .stTextInput input, .stTextArea textarea {
     border-radius: 8px !important;
     border: 1px solid #d1d5db !important;
@@ -131,36 +128,33 @@ st.markdown(
 
 .stTextInput input {
     background-color: #f9fafb !important;
-    font-size: 0.92rem !important;   /* 대략 14~15px */
+    font-size: 0.92rem !important;
 }
 
-/* 내용 영역: 눈에 잘 띄게, 높이 크게 */
 .stTextArea textarea {
     min-height: 180px !important;
     font-size: 0.92rem !important;
-    background-color: #fefce8 !important;   /* 옅은 크림톤 */
-    border-color: #eab308 !important;       /* 부드러운 옐로우 강조 */
+    background-color: #fefce8 !important;
+    border-color: #eab308 !important;
 }
 
-/* 버튼 */
 .stButton button {
     padding: 0.16rem 0.6rem !important;
     font-size: 0.80rem !important;
     border-radius: 999px !important;
 }
 
-/* 우측 메인 컨텐츠 전체를 위로 올리기 */
 .mk-main-wrapper {
     margin-top: -40px;
 }
 
-/* expander(디스클로저) 박스 */
+/* disclosure 카드 박스 */
 details {
     border-radius: 8px !important;
-    background-color: #f9fafb !important;   /* 배경과 비슷한 연한 톤 */
+    background-color: #f9fafb !important;
     border: 1px solid #e5e7eb !important;
-    padding: 0.05rem 0.45rem 0.3rem 0.45rem !important;
-    margin-bottom: 0.25rem !important;
+    padding: 0.1rem 0.55rem 0.4rem 0.55rem !important;
+    margin-bottom: 0.25rem !important;  /* 카드 간 간격 유지 */
     box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
 }
 
@@ -169,29 +163,27 @@ details[open] {
     box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
 }
 
-/* expander 헤더 - 제목 폰트 좀 더 크게 */
+/* disclosure 닫혔을 때도 높이를 조금 더 느끼도록 summary 패딩/폰트 조정 */
 details > summary {
     font-weight: 600 !important;
     color: #374151 !important;
-    font-size: 1.05rem !important;    /* 대략 16~17px */
-    padding: 0.12rem 0 !important;
-    line-height: 1.15 !important;
+    font-size: 1.18rem !important;      /* 제목 더 큼 (대략 18~19px) */
+    padding: 0.4rem 0 0.25rem 0 !important;  /* 세로 패딩 ↑ → 닫힌 높이 증가 */
+    line-height: 1.2 !important;
 }
 
-/* hr 간격 */
+/* hr */
 hr {
     margin-top: 0.35rem !important;
     margin-bottom: 0.35rem !important;
 }
 
-/* 카드 툴바 라디오 그룹 감싸는 영역 */
 .mk-toolbar-wrapper {
     padding: 0.1rem 0 0.2rem 0;
 }
 
-/* 라디오 옵션 텍스트 */
 div[role="radiogroup"] label {
-    font-size: 0.8rem !important;     /* 대략 13px */
+    font-size: 0.8rem !important;
     color: #4b5563 !important;
 }
 </style>
@@ -341,7 +333,7 @@ st.markdown(
 )
 st.markdown("---")
 st.markdown(
-    f"<h4 style='margin:0.4rem 0 0.3rem 0; color:#4b5563; font-size:16px;'>{choice}</h4>",
+    f"<h3 style='margin:0.4rem 0 0.3rem 0; color:#4b5563; font-size:20px;'>{choice}</h3>",
     unsafe_allow_html=True,
 )
 
@@ -396,7 +388,7 @@ if card_action == "💾 저장":
 
 elif card_action == "＋ 카드 추가":
     add_card(current_page_id)
-    st.session_state["card_toolbar_run_id"] += 1    #
+    st.session_state["card_toolbar_run_id"] += 1
     st.rerun()
 
 elif card_action == "🗑 카드 삭제":
