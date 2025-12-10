@@ -108,120 +108,82 @@ def delete_card_by_title(page_id: int, title: str):
 st.markdown(
     """
 <style>
-:root {
-    --mk-bg: #f3f4f6;
-    --mk-sidebar-bg: #0f172a;
-    --mk-sidebar-border: #111827;
-    --mk-accent: #6366f1;
-    --mk-accent-soft: #eef2ff;
-    --mk-text-main: #111827;
-    --mk-text-muted: #6b7280;
-    --mk-card-bg: #ffffff;
-    --mk-card-border: #e5e7eb;
-}
-
-/* 전체 배경 */
 [data-testid="stAppViewContainer"] {
-    background-color: var(--mk-bg);
+    background-color: #f4f5f7;
 }
 
-/* 사이드바 */
-[data-testid="stSidebar"] {
-    background-color: var(--mk-sidebar-bg) !important;
-    color: #e5e7eb !important;
-    border-right: 1px solid var(--mk-sidebar-border);
+/* 세로 블럭 간격 살짝 줄이기 */
+.stVerticalBlock {
+    gap: 0.25rem !important;
 }
 
-/* 사이드바 안 텍스트 기본 */
-[data-testid="stSidebar"] * {
-    color: #e5e7eb !important;
-}
-
-/* 옵션 메뉴 영역 컨테이너 살짝 패딩 */
-[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
-    padding-top: 0.4rem;
-}
-
-/* 공통 인풋/텍스트 영역 */
-.stTextInput input, .stTextArea textarea {
-    border-radius: 10px !important;
-    border: 1px solid var(--mk-card-border) !important;
-    color: var(--mk-text-main) !important;
-}
-
-.stTextInput input {
-    background-color: #f9fafb !important;
-    font-weight: 400 !important;
-    font-size: 0.95rem !important;
-}
-
-.stTextArea textarea {
-    min-height: 110px !important;
-    font-size: 0.95rem !important;
-    background-color: var(--mk-card-bg) !important;
-}
-
-/* 라벨 숨기기 */
+/* 입력 라벨 숨기기 */
 .stTextInput label, .stTextArea label {
     display: none !important;
 }
 
+/* 인풋/텍스트 영역 공통 */
+.stTextInput input, .stTextArea textarea {
+    border-radius: 8px !important;
+    border: 1px solid #d1d5db !important;
+    color: #111827 !important;
+}
+
+.stTextInput input {
+    background-color: #f4f5f7 !important;
+    font-size: 0.92rem !important;
+}
+
+.stTextArea textarea {
+    min-height: 90px !important;
+    font-size: 0.92rem !important;
+    background-color: #ffffff !important;
+}
+
 /* 버튼 */
 .stButton button {
-    padding: 0.18rem 0.6rem !important;
+    padding: 0.16rem 0.6rem !important;
     font-size: 0.80rem !important;
     border-radius: 999px !important;
-    border: 1px solid transparent !important;
-    background-color: var(--mk-accent) !important;
-    color: #ffffff !important;
 }
 
-/* 상단 제목 영역 여백 조정 */
-h2 {
-    color: var(--mk-accent) !important;
-    letter-spacing: 0.03em;
-}
-
-/* 카드(expander) 스타일 */
+/* expander(디스클로저) 전체 박스 - 높이, 패딩 최소화 */
 details {
-    border-radius: 12px !important;
-    background-color: var(--mk-card-bg) !important;
-    border: 1px solid var(--mk-card-border) !important;
-    padding: 0.2rem 0.6rem 0.6rem 0.6rem !important;
-    margin-bottom: 0.5rem !important;
-    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.05);
+    border-radius: 8px !important;
+    background-color: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    padding: 0.05rem 0.45rem 0.3rem 0.45rem !important;
+    margin-bottom: 0.25rem !important;
 }
 
+/* 열렸을 때 약간만 강조 */
 details[open] {
-    border-color: var(--mk-accent-soft) !important;
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    border-color: #e0e7ff !important;
 }
 
-/* expander 제목 */
+/* expander 헤더 줄높이/패딩 줄이기 */
 details > summary {
     font-weight: 600 !important;
-    color: var(--mk-text-main) !important;
+    color: #111827 !important;
+    font-size: 0.9rem !important;
+    padding: 0.1rem 0 !important;
+    line-height: 1.1 !important;
 }
 
-/* hr 간격 */
+/* hr 간격도 컴팩트하게 */
 hr {
-    margin-top: 0.4rem !important;
-    margin-bottom: 0.4rem !important;
+    margin-top: 0.35rem !important;
+    margin-bottom: 0.35rem !important;
 }
 
-/* 카드 툴바 라디오 그룹을 담는 컨테이너 약간 위아래 여백 */
+/* 카드 툴바 라디오 그룹 감싸는 영역 */
 .mk-toolbar-wrapper {
-    padding: 0.2rem 0 0.3rem 0;
+    padding: 0.1rem 0 0.2rem 0;
 }
 
-/* 라디오 버튼 텍스트 살짝 줄이기 */
+/* 라디오 옵션 텍스트 약간 작게 */
 div[role="radiogroup"] label {
-    font-size: 0.82rem !important;
-}
-
-/* 사이드바의 라디오/텍스트 색상 복원 */
-[data-testid="stSidebar"] div[role="radiogroup"] label {
-    color: #e5e7eb !important;
+    font-size: 0.8rem !important;
 }
 </style>
 """,
@@ -268,17 +230,17 @@ with st.sidebar:
         menu_icon="menu-app",
         default_index=current_index,
         styles={
-            "container": {"background-color": "transparent"},
-            "icon": {"color": "#9ca3af"},
+            "container": {"background-color": "#f5f6fa"},
+            "icon": {"color": "#4c4c4c"},
             "nav-link": {
                 "font-size": "15px",
                 "padding": "6px 10px",
-                "color": "#e5e7eb",
-                "--hover-color": "#1f2937",
+                "color": "#333",
+                "--hover-color": "#e4e6eb",
             },
             "nav-link-selected": {
-                "background-color": "#111827",
-                "color": "#ffffff",
+                "background-color": "#dcdfe5",
+                "color": "black",
             },
         },
     )
@@ -289,7 +251,7 @@ with st.sidebar:
     st.markdown("---")
 
     st.markdown(
-        "<div style='margin-top:0.6rem;'></div>",
+        "<div style='margin-top:0.4rem;'></div>",
         unsafe_allow_html=True,
     )
 
@@ -302,7 +264,7 @@ with st.sidebar:
     )
 
     st.markdown(
-        "<div style='margin-bottom:0.6rem;'></div>",
+        "<div style='margin-bottom:0.4rem;'></div>",
         unsafe_allow_html=True,
     )
 
@@ -362,12 +324,12 @@ with st.sidebar:
                 st.rerun()
 
 st.markdown(
-    "<h2 style='margin-bottom:0.2rem; text-align:right;'>MemoKing</h2>",
+    "<h2 style='margin-bottom:0.15rem; text-align:right;'>MemoKing</h2>",
     unsafe_allow_html=True,
 )
 st.markdown("---")
 st.markdown(
-    f"<h4 style='margin:0.6rem 0 0.4rem 0; color:#111827;'>{choice}</h4>",
+    f"<h4 style='margin:0.4rem 0 0.3rem 0; color:#111827;'>{choice}</h4>",
     unsafe_allow_html=True,
 )
 
@@ -389,16 +351,13 @@ for card_id, title, content in cards:
         st.text_area(
             "",
             value=content,
-            height=110,
+            height=90,
             key=f"content_{card_id}",
             label_visibility="collapsed",
             placeholder="내용을 입력하세요",
         )
 
-st.markdown(
-    "<div style='margin:0.6rem 0;'></div>",
-    unsafe_allow_html=True,
-)
+st.markdown("---")
 
 toolbar_key = f"card_toolbar_{st.session_state['card_toolbar_run_id']}"
 
