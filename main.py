@@ -126,7 +126,7 @@ st.markdown(
 .stTextInput input, .stTextArea textarea {
     border-radius: 8px !important;
     border: 1px solid #d1d5db !important;
-    color: #111827 !important;
+    color: #374151 !important;  /* 부드러운 다크그레이 */
 }
 
 .stTextInput input {
@@ -134,8 +134,9 @@ st.markdown(
     font-size: 0.92rem !important;
 }
 
+/* 내용 영역 높이 ↑ (두 배 정도) */
 .stTextArea textarea {
-    min-height: 90px !important;
+    min-height: 180px !important;
     font-size: 0.92rem !important;
     background-color: #ffffff !important;
 }
@@ -148,26 +149,26 @@ st.markdown(
 }
 
 /* expander(디스클로저) 전체 박스 - 높이, 패딩 최소화 */
+/* 배경을 전체 배경과 비슷한 연한 회색으로 */
 details {
     border-radius: 8px !important;
-    background-color: #ffffff !important;
+    background-color: #f3f4f6 !important;  /* 배경과 비슷한 톤 */
     border: 1px solid #e5e7eb !important;
     padding: 0.05rem 0.45rem 0.3rem 0.45rem !important;
     margin-bottom: 0.25rem !important;
 }
 
-/* 열렸을 때 약간만 강조 */
 details[open] {
     border-color: #e0e7ff !important;
 }
 
-/* expander 헤더 줄높이/패딩 줄이기 */
+/* expander 헤더 - 폰트 조금 더 크게 + 톤 부드럽게 */
 details > summary {
     font-weight: 600 !important;
-    color: #111827 !important;
-    font-size: 0.9rem !important;
-    padding: 0.1rem 0 !important;
-    line-height: 1.1 !important;
+    color: #374151 !important;
+    font-size: 1.0rem !important;      /* ↑ 좀 더 크게 */
+    padding: 0.12rem 0 !important;
+    line-height: 1.15 !important;
 }
 
 /* hr 간격도 컴팩트하게 */
@@ -231,16 +232,16 @@ with st.sidebar:
         default_index=current_index,
         styles={
             "container": {"background-color": "#f5f6fa"},
-            "icon": {"color": "#4c4c4c"},
+            "icon": {"color": "#4b5563"},
             "nav-link": {
                 "font-size": "15px",
                 "padding": "6px 10px",
-                "color": "#333",
+                "color": "#374151",
                 "--hover-color": "#e4e6eb",
             },
             "nav-link-selected": {
                 "background-color": "#dcdfe5",
-                "color": "black",
+                "color": "#111827",
             },
         },
     )
@@ -324,12 +325,12 @@ with st.sidebar:
                 st.rerun()
 
 st.markdown(
-    "<h2 style='margin-bottom:0.15rem; text-align:right;'>MemoKing</h2>",
+    "<h2 style='margin-bottom:0.15rem; text-align:right; color:#374151;'>MemoKing</h2>",
     unsafe_allow_html=True,
 )
 st.markdown("---")
 st.markdown(
-    f"<h4 style='margin:0.4rem 0 0.3rem 0; color:#111827;'>{choice}</h4>",
+    f"<h4 style='margin:0.4rem 0 0.3rem 0; color:#4b5563;'>{choice}</h4>",
     unsafe_allow_html=True,
 )
 
@@ -351,7 +352,7 @@ for card_id, title, content in cards:
         st.text_area(
             "",
             value=content,
-            height=90,
+            height=180,   # ← 내용 높이 두 배 정도
             key=f"content_{card_id}",
             label_visibility="collapsed",
             placeholder="내용을 입력하세요",
