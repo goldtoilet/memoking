@@ -171,8 +171,8 @@ if "confirm_delete_page" not in st.session_state:
     st.session_state["confirm_delete_page"] = False
 if "reset_page_toolbar" not in st.session_state:
     st.session_state["reset_page_toolbar"] = False
-if "card_toolbar" not in st.session_state:
-    st.session_state["card_toolbar"] = "-"
+if "card_toolbar_run_id" not in st.session_state:
+    st.session_state["card_toolbar_run_id"] = 0
 
 if st.session_state.get("reset_page_toolbar", False):
     st.session_state["page_toolbar"] = "-"
@@ -334,14 +334,15 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.radio(
+toolbar_key = f"card_toolbar_{st.session_state['card_toolbar_run_id']}"
+
+card_action = st.radio(
     "",
     ["-", "💾 저장", "＋ 카드 추가", "🗑 카드 삭제"],
-    key="card_toolbar",
+    key=toolbar_key,
     horizontal=True,
     label_visibility="collapsed",
 )
-card_action = st.session_state.get("card_toolbar", "-")
 
 if card_action == "💾 저장":
     for card_id, title, content in cards:
@@ -349,13 +350,13 @@ if card_action == "💾 저장":
         new_content = st.session_state.get(f"content_{card_id}", content)
         update_card(card_id, new_title, new_content)
 
-    st.session_state["card_toolbar"] = "-"
     st.success("모든 카드가 저장되었습니다.")
+    st.session_state["card_toolbar_run_id"] += 1
     st.rerun()
 
 elif card_action == "＋ 카드 추가":
     add_card(current_page_id)
-    st.session_state["card_toolbar"] = "-"
+    st.session_state["card_toolbar_run_id"] += 1
     st.rerun()
 
 elif card_action == "🗑 카드 삭제":
@@ -374,5 +375,5 @@ elif card_action == "🗑 카드 삭제":
                 st.warning(f"'{delete_title}' 제목의 카드를 찾을 수 없습니다.")
         else:
             st.warning("삭제할 카드 제목을 입력해주세요.")
-        st.session_state["card_toolbar"] = "-"
+        st.session_state["card_toolbar_run_id"] += 1
         st.rerun()
